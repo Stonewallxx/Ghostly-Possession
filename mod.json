@@ -1,0 +1,12 @@
+{
+  "name": "Ghostly Possession",
+  "id": "GhostlyPossession",
+  "version": "0.1.0",
+  "author": "Stonewall",
+  "requires_kif": ">=0.21.59",
+  "description": "Now and then a Ghost possesses one of your team, and some wild Pokémon have one inside. Catch one and keep the Ghost or the Pokémon, or cast the Ghost out to try for both. Works on its own, and uses Kanto Reloaded's screens when it's installed.",
+  "tags": ["Gameplay"],
+  "dependencies": [],
+  "load_after": ["KantoReloaded", "alpha_encounters", "hoenn_native_kif"],
+  "scripts": ["main.rb"]
+}
