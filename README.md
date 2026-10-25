@@ -32,8 +32,8 @@ It works on its own for now. When Kanto Reloaded is installed, it uses Kanto Rel
 ## Installing
 
 1. Install KIF Beta.
-2. Download the latest release of this mod.
-3. Put it in KIF Beta's `Mods` folder, so the path is `Mods\GhostlyPossession\mod.json`.
+2. Download the latest release of this mod and unzip it.
+3. Put the `GhostlyPossession` folder from inside it in KIF Beta's `Mods` folder, so the path is `Mods\GhostlyPossession\mod.json`.
 4. Start the game. Its settings are in KIF Settings' Pokémon section, under Ghostly Possession, Nights and Spooky Season. With Kanto Reloaded, they're in the Kanto Reloaded section.
 
 ## Bug Reporting
