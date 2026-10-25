@@ -38,4 +38,4 @@ It works on its own for now. When Kanto Reloaded is installed, it uses Kanto Rel
 
 ## Bug Reporting
 
-Report the issue in the [Discord Thread](). Ghostly Possession's lines in KIF's log start with `[Ghostly Possession]`. With Kanto Reloaded installed, a Bug Report made in the game includes them.
+Report the issue in the [Discord Thread](https://discord.com/channels/1121345297352753243/1563911967247179817/1563911967247179817). Ghostly Possession's lines in KIF's log start with `[Ghostly Possession]`. With Kanto Reloaded installed, a Bug Report made in the game includes them.
