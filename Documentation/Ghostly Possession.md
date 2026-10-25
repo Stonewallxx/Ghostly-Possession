@@ -21,6 +21,7 @@ It works on its own on KIF Beta. When Kanto Reloaded is installed, it uses Kanto
 - **Autosaves:** held while anything is the fusion, and made once everyone is back and the battle is counted, so a save never holds a fusion.
 - **Not in These Battles:** the Bug Contest, recorded and Battle Frontier battles, Self-Battle copies, multiplayer battles. A trainer's Pokémon is never possessed.
 - **Nothing of PIF's Fusing Is Used:** no `pbFuse`, no unfusing. The species is changed in place and put back from a snapshot kept in memory only.
+- **No Fusing or Unfusing While Possessed** ([Fusing.rb](../Core/Fusing.rb)): a possessed Pokémon can't be fused (either one of the two) or unfused, in the party, the PC (Kanto Reloaded's too) or when fusing a newly caught Pokémon: "A Ghost is inside Pikachu. It can't be unfused while it's possessed." The game's fusing keeps copies of the two halves and gives the copies back when they unfuse, so a Ghost inside would vanish, come back with its count reset, turn up twice or move to the other half. Reversers still work: it's the same Pokémon, and the Ghost stays inside.
 
 ## In Battle
 
@@ -51,6 +52,8 @@ A possessed Pokémon shows as the fusion on the party screen, drawn from its not
 
 - **On Its Own:** the game's party panel shows the fusion's icon (Big Pokémon Icons too), its Poké Ball turns ghost purple (shading kept; hidden anyway with Big Pokémon Icons) and its name lavender.
 - **With Kanto Reloaded:** its Party Screen shows the fusion's icon and types (the card is purple: the fusion is Ghost first), a dashed purple outline and a ghost badge on the card; the details show the Ghost's picture and name, top right.
+- **In the PC** ([PCLook.rb](../UI/PCLook.rb)): the fusion's icon with the battle's ghost badge in its slot's corner, wherever its icon shows: the boxes, the party column or row, held in the hand. On its own, the side panel shows its name lavender, the fusion's picture and Ghost-first types, and the Ghost small in the picture's corner. With Kanto Reloaded's Reloaded PC, the plate is lit ghost purple with the Party Screen's dashed outline, the fusion's picture, and the Ghost and its name top right; Compare shows the fusion's picture and types, and the badge after its name.
+- **Its Summary** ([SummaryLook.rb](../UI/SummaryLook.rb)) shows it as it is in battle: the fusion's picture, species and Ghost-first types (the Info page's Head and Body rows say which), its stats as possession makes them, and the Ghost's move in its slot. The Ghost is small in the picture's corner, the name lavender with the ghost badge, and what possession changes is ghost purple: each stat it raises and that stat's base, and the Ghost's move with the badge (its details too, when you pick it). Its name, level, nature, IVs, EVs, ability, item and Exp stay its own. Only the drawing sees the fusion: reordering moves and the Summary's other actions keep the Pokémon itself, and learning a move shows its own moves, the one you'd replace.
 
 Its party menu has **Possession** ([Info.rb](../UI/Info.rb)): which Ghost is inside, its Will and how long it'll stay as hints (Will: "It's quiet." / "It stirs now and then." / "It's restless."; Stay, by the battles left: "It's settling in." / "It'll stay a while." / "It won't stay long."), and its move.
 
@@ -180,9 +183,9 @@ With a Darkness, nights on outdoor maps turn violet and darker than KIF's own ([
 | Darkness | The Night |
 |---|---|
 | Off | KIF's own nights, untouched |
-| Deepest Violet (a new save's) | Tone(-92, -144, -46, 110) |
-| Midnight Violet | Tone(-114, -166, -70, 120) |
-| Pitch Black | Midnight Violet, under a dark round you |
+| Deepest Violet (a new save's) | Tone(-114, -166, -70, 120) |
+| Midnight Violet | Tone(-150, -202, -106, 120): halfway from Deepest Violet to Pitch Black's dark |
+| Pitch Black | Deepest Violet, under a dark round you |
 
 - **When:** KIF's own evening until 8 pm, halfway at 9 pm, the season's night from 10 pm to 3 am, halfway at 4 am, and KIF's morning from 5. The game blends minute by minute between hours (`PBDayNight.getToneInternal`).
 - **EBDX:** the battle backdrops take the same night (`BattleSceneRoom#daylightTint`). Pitch Black battles are Midnight Violet.
@@ -195,19 +198,26 @@ The caves' darkness brought outdoors at night ([SeasonDark.rb](../UI/SeasonDark.
 - **Round You:** 96 px; after Flash or KIF's Lantern, 176 px, as in caves. While it's up it is the game's darkness sprite, so Flash and the Lantern work with the game's own code, and Flash may be used there. A Flash lasts until you leave the map, after battles too.
 - **Every Light:** the map's own lamps (its `OutdoorLight` and `Light` events) light their own patch, as does anything that gives light: `Season.light(:wisp) { [screen_x, screen_y, radius] }`, and `Season.unlight(:wisp)`.
 - **When:** it fades in from 9 pm and out at 4 am, with the night.
+- **How Dark:** not quite black: away from the lights you can still make out roofs, trees and paths in deep blue (28% of the dark taken off the scene, `SeasonDark::DEPTH`).
 - **How:** a subtracting sprite, white where it's dark, with a soft black stamp at each light. Each frame is one fill and a stamp per light.
 
 ### Town Lights
 
 With Town Lights On and Darkness on Deepest Violet or darker, from 9 pm to 4:30 am, towns and routes light up ([TownLights.rb](../UI/TownLights.rb)). Only the glow: no light-source shapes, so no dot on the lamps and no doorway-sized blocks.
 
-- **Lit Fixtures:** the windows' and glass doors' own panes and the lamps' own bulbs glow. They're about two-thirds lit and look the same on any Darkness (as on Midnight Violet).
-- **Warm Pools:** light falls on the ground below each window and in front of each door, never over the building, and the panes light their wall a little.
-- **Lamps:** an area light about four tiles round each, for the map's light events and the lamps drawn in its tiles. KIF's own lamp glow is hidden while it's on.
-- **In Pitch Black:** every lamp, door and window cuts its own patch of the dark.
-- **Where:** 122 outdoor maps (towns, and the routes with lamps or gatehouses), with 1,738 windows, 371 doors and 116 lamps.
+- **Lit Fixtures:** the windows' and glass doors' own panes and the lamps' own bulbs glow. They're about two-thirds lit and look the same on any Darkness (as on Deepest Violet).
+- **Which Buildings:** houses (their doors' windows too), Marts (their doors and the MART letters too), Saffron's blocks, Celadon's brownstones and Department Store, the Pokémon Centers (each pane a cool white, their sign unlit), the Gyms (their windows, glass tops and glass doors; the door's frame, handle and foot stay white), Goldenrod's office blocks and Radio Tower, Silph Co. (its glass doors too), the Pokémon Mansion, Johto's wooden houses and pagodas, Vermilion's port and orange houses, the Seagallop harbors and the Power Plant, the pink and teal houses, the S.S. Anne (its cabin windows, portholes, the curved band of its bridge's windows and its front window), Lavender's Pokémon Tower, and the lighthouses.
+- **The Pokémon Tower:** its eight bands of slits and the four windows at its base glow a ghostly green, and so does their light. The slits are high up, so they light only the tower's wall; the base windows light the ground in front too.
+- **The Lighthouses:** Olivine's Glitter Lighthouse, its twin on Cerulean Cape and Cianwood's lighthouse shine a bright, near-white beacon: their lantern's panes (Cianwood's dark gallery band) light up as brightly as a lamp's bulb, and a steady light spreads about four tiles round from the lantern. Cianwood's two portholes light their wall.
+- **The Torch Pillar:** Route 34's torch pillar burns at night: its flame in its own fire colours (not the gold bowl or the pillar), and a warm light about four tiles round it that flickers like fire. In Pitch Black its patch of light flickers with it. (Sinjoh Ruins' two aren't on an outdoor map, so they stay as they are.)
+- **The Beam:** a soft beam turns round each lantern, a full turn every 8 seconds, fading in from the lantern and out at its end. It leaves the panes: turning away it passes behind the roof, turning toward you it crosses in front of the tower. In Pitch Black it lifts the dark where it falls.
+- **Ground Light:** each window's and door's light on the ground: a soft oval at its foot that fans out as it fades, the way the glass faces (a Pokémon Center's curved glass to its side), on open ground only, never over a building. The panes light their wall a little. A window high on a tall building has no ground near it, so only its wall glows. The Pokémon Centers' light is cool and a little brighter.
+- **No Stacking:** where lights overlap, the brightest shows, not their sum, and a lamp's light wins over the others under it.
+- **Lamps:** an area light about four tiles round each, for the map's light events and the lamps drawn in its tiles (a lantern arch, or a lamp two tiles wide, is one light). Each lamp's own head lights up: the orange lamps, Pewter's twin lanterns, the globe lamps and the lanterns of Olivine's and Celadon's arches. KIF's own lamp glow is hidden while it's on.
+- **In Pitch Black:** every lit pane lifts its own patch of the dark, sized by the pane (a porthole a small one, a big window or a glass top a bigger one), upper storeys too; so does every door and lamp, and each ground light where it falls.
+- **Where:** 87 outdoor maps (towns, and the routes with lamps or gatehouses), with 2,368 windows, 315 doors and 128 lamps.
 
-The lights come with the mod, worked out ahead of time, so the game only shows them: one picture per map of just the lit pixels (`Graphics/GhostlyPossession/TownLights/MapNNN.png`, in its own folder so no other mod's files can clash), and where each light is (`Data/town_lights.json`).
+The lights come with the mod, worked out ahead of time, so the game only shows them: three pictures per map, the lit pixels (`Graphics/GhostlyPossession/TownLights/MapNNN.png`), the glow (`MapNNNg.png`, made at half size, shown at twice that and added over the scene) and Pitch Black's patches (`MapNNNh.png`, half size, laid into the dark in one go), in their own folder so no other mod's files can clash, and where each light and patch is (`Data/town_lights.json`).
 
 ### Fog, Music, a Hat and Night Ghosts
 
@@ -269,10 +279,10 @@ The defaults; each is one constant in the file named.
 | A night encounter is a Ghost (Spooky Season) | 1 in 10, on routes and in caves | `SeasonExtras::GHOST_CHANCE` ([SeasonExtras.rb](../Core/SeasonExtras.rb)) |
 | The haunted places' fog | about 0.42 opacity, shaded (150, 140, 178) | `SeasonExtras::FOG_OPACITY`, `FOG_TONE`, `FOG_MAPS` |
 | Town Lights' hours | 9 pm to 4:30 am, fading in and out over 20 frames | `TownLights.hours_on?`, `TownLights::FADE` ([TownLights.rb](../UI/TownLights.rb)) |
-| A lamp's light | about four tiles round (128 px) | `TownLights::LAMP_R` |
-| A window's pool / a door's | 56 x 14 / 68 x 18 px, on the ground below | `TownLights::POOL_W`, `POOL_H`, `DOOR_W`, `DOOR_H` |
+| A lamp's light | about four tiles round (128 px) | `LAMP_R` ([build.py](../Tools/TownLights/build.py), in the glow pictures) |
+| A window's ground light / a door's | a soft oval at the foot fanning out over 46 / 50 px, 20 to 64 / 26 to 72 px wide, strength 0.21 / 0.26 (a Pokémon Center's 1.7 times) | `SHAFT`, `CLOSE`, `COOL_BRIGHTER` (in the glow pictures) |
 | How lit the fixtures are | panes 170/255 amber, bulbs 215/255 | in the lit pictures |
-| Its patches in Pitch Black | lamp 110, door 56, window 46 px | `TownLights::HOLES` |
+| Its patches in Pitch Black | lamp 110, door 56, ground light 40 px, each lit pane by its size (12 to 90 px) | `HOLES`, `lit_spots` (in the patches pictures) |
 | Its ends | Treasure 55 / Possessed Wild 30 / Possession 10 / Grave 5 | `Wisps::ENDS`; the treasure's items and weights in `Wisps::GHOSTLY`, `GEAR`, `VALUABLES`, `RARE` |
 | A restless spirit stays | 5 turns | `Spirits::TURNS` ([Spirits.rb](../Core/Spirits.rb)) |
 | Its gift's rare find | twice as likely | `Spirits::RARE` |

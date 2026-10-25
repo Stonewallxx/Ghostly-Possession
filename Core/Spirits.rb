@@ -770,24 +770,22 @@ module GhostlyPossession
     # lead Pokémon's spirit, for trying it out)
     #--------------------------------------------------------------------------
     def debug_grave
-      unless $game_map && $game_player
-        pbMessage(_INTL("There's no map to put a grave on."))
-        return
-      end
+      pbMessage(debug_grave_words)
+    end
+
+    # (its words returned: the Kanto Reloaded Debug mod's page calls this)
+    def debug_grave_words
+      return _INTL("There's no map to put a grave on.") unless $game_map && $game_player
       dx, dy = { 2 => [0, 1], 4 => [-1, 0], 6 => [1, 0], 8 => [0, -1] }[$game_player.direction] || [0, 1]
       x, y = $game_player.x + dx, $game_player.y + dy
       unless $game_map.valid?(x, y) && $game_map.passable?(x, y, 0) && !$game_map.events.values.any? { |e| e.x == x && e.y == y }
-        pbMessage(_INTL("There's no room for a grave in front of you."))
-        return
+        return _INTL("There's no room for a grave in front of you.")
       end
       remove_grave if grave
       f = choose
       unless f
         lead = $Trainer && $Trainer.party.compact.find { |p| !p.egg? }
-        unless lead
-          pbMessage(_INTL("No fallen Pokémon, and no Pokémon to stand in for one."))
-          return
-        end
+        return _INTL("No fallen Pokémon, and no Pokémon to stand in for one.") unless lead
         copy = Marshal.load(Marshal.dump(lead))
         copy.remove_instance_variable(Note::IVAR) if copy.instance_variable_defined?(Note::IVAR)
         @debug = { :key => "debug#{rand(1_000_000)}", :name => copy.name, :species => copy.species, :level => copy.level,
@@ -797,7 +795,7 @@ module GhostlyPossession
       @debug_any = true
       place_grave(x, y, f)
       @debug_any = false
-      pbMessage(_INTL("A grave for {1}, in front of you.", f[:name]))
+      return _INTL("A grave for {1}, in front of you.", f[:name])
     end
 
     def debug_menu

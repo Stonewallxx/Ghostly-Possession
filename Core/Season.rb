@@ -4,9 +4,11 @@
 # With Spooky Season On and a Darkness (his picks 2026-10-24), nights on
 # outdoor maps turn violet and darker than KIF's own:
 #
-#   Deepest Violet   Tone(-92, -144, -46, 110)   (a new save's)
-#   Midnight Violet  Tone(-114, -166, -70, 120)
-#   Pitch Black      Midnight Violet under a smooth dark round you, every
+#   Deepest Violet   Tone(-114, -166, -70, 120)  (a new save's)
+#   Midnight Violet  Tone(-150, -202, -106, 120) (his ask 2026-10-25: halfway
+#                    from Deepest Violet to Pitch Black's dark, which takes
+#                    another 71 off: 28% of white)
+#   Pitch Black      Deepest Violet under a smooth dark round you, every
 #                    light cutting its own patch (UI/SeasonDark.rb)
 #
 # The night comes in as KIF's own evening until 8 pm, halfway at 9 pm, the
@@ -23,8 +25,11 @@
 
 module GhostlyPossession
   module Season
-    # [red, green, blue, gray] by Darkness (Pitch Black's night is Midnight Violet)
-    TONES = { 1 => [-92, -144, -46, 110], 2 => [-114, -166, -70, 120], 3 => [-114, -166, -70, 120] }.freeze
+    # [red, green, blue, gray] by Darkness (Pitch Black's night is Deepest
+    # Violet, its own dark over it)
+    TONES = { 1 => [-114, -166, -70, 120], 2 => [-150, -202, -106, 120], 3 => [-114, -166, -70, 120] }.freeze
+    # Battles have no dark of their own: Pitch Black's are Midnight Violet
+    BATTLE = { 1 => 1, 2 => 2, 3 => 2 }.freeze
     EBDX_NIGHT = [-120, -100, -60, 0].freeze      # EBDX's own night backdrop
     @lights = {}
 
@@ -143,7 +148,7 @@ module GhostlyPossession
       return unless data && sprites
       return if !data["outdoor"] && !data["sky"]
       return if room.instance_variable_get(:@sunny)
-      tone = Tone.new(*mix(EBDX_NIGHT, TONES[darkness], s))
+      tone = Tone.new(*mix(EBDX_NIGHT, TONES[BATTLE[darkness]], s))
       room.instance_variable_set(:@daylightTone, tone)
       sprites.each_key do |key|
         next unless sprites[key]

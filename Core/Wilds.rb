@@ -85,7 +85,9 @@ module GhostlyPossession
 
     # The Ghost (this area's own, at its level) goes in; false if it can't
     def haunt(pkmn)
-      ghost = Ghosts.pick
+      # (the Debug Menu's Ghost, if it fits this one)
+      wanted = Debug.wild_forced? ? Debug.wild_ghost : nil
+      ghost = wanted && Ghosts.host?(pkmn, wanted) ? wanted : Ghosts.pick
       return false unless ghost && Ghosts.host?(pkmn, ghost)
       return false unless Note.write(pkmn, Ghosts.note_for(pkmn, ghost).merge(:wild => true))
       note = Note.read(pkmn)

@@ -645,8 +645,23 @@ module GhostlyPossession
     # The Debug menu
     #--------------------------------------------------------------------------
     def force_next
+      pbMessage(force_words)
+    end
+
+    # The next quiet step's wisp, its trail's end (nil: by chance): its words
+    # (the Kanto Reloaded Debug mod's page calls this)
+    def force_words(kind = nil)
       @forced = true
-      pbMessage(_INTL("The next quiet step, a will-o'-wisp will appear (any time, any place you can walk around)."))
+      @forced_end = kind if ENDS.any? { |e, _w| e == kind }
+      return _INTL("The next quiet step, a will-o'-wisp will appear (any time, any place you can walk around).") unless @forced_end
+      words = _INTL("The next quiet step, a will-o'-wisp will appear, its trail ending in: {1}.", end_name(@forced_end))
+      return words if possible?(@forced_end)
+      return words + " " + _INTL("It can't end that way here and now, so it may end in a treasure.")
+    end
+
+    def end_name(kind)
+      return { :treasure => _INTL("A Treasure"), :wild => _INTL("A Possessed Wild"), :possession => _INTL("A Possession"),
+               :grave => _INTL("A Grave") }[kind] || kind.to_s
     end
 
     def force_end

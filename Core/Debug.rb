@@ -15,6 +15,19 @@
 #   Haunt the Next Wild Pokémon  the next lone wild Pokémon has a Ghost
 #                              inside (no chance, any kind of battle, even
 #                              with Haunted Wilds Off)
+#
+# With the Kanto Reloaded Debug mod, its Ghostly Possession and Spooky
+# Season pages (its Pages/GhostlyPossession.rb) take these over in its
+# Debug Menu, with more: each command's work is here, its words returned
+# (the *_words methods), and the picks it can set:
+#
+#   Debug.pick          the next possession's host (personal ID), Ghost,
+#                       Will and Stay (nil: rolled)
+#   Debug.wild_ghost    the next haunted wild one's Ghost (nil: rolled)
+#   Debug.night_ghost   the next route or cave encounter is a Ghost (any
+#                       time, no chance: the Spooky Season's Night Ghosts)
+#   Debug.halloween     it's 31 October for the Witchy Hat
+#   Debug.track         tonight's haunted track (nil: the night's own)
 #==============================================================================
 
 module GhostlyPossession
@@ -27,6 +40,7 @@ module GhostlyPossession
 
     def forced=(value)
       @forced = value ? true : false
+      @pick = nil unless @forced
     end
 
     def wild_forced?
@@ -35,54 +49,118 @@ module GhostlyPossession
 
     def wild_forced=(value)
       @wild_forced = value ? true : false
+      @wild_ghost = nil unless @wild_forced
     end
 
+    # {:host => personal ID, :ghost, :will, :stay}, each nil for rolled
+    def pick
+      return @pick
+    end
+
+    def wild_ghost
+      return @wild_ghost
+    end
+
+    def night_ghost?
+      return @night_ghost ? true : false
+    end
+
+    def night_ghost=(value)
+      @night_ghost = value ? true : false
+    end
+
+    def halloween?
+      return @halloween ? true : false
+    end
+
+    def halloween=(value)
+      @halloween = value ? true : false
+    end
+
+    def track
+      return @track
+    end
+
+    def track=(name)
+      @track = name
+    end
+
+    #--------------------------------------------------------------------------
+    # The commands (each one's words returned)
+    #--------------------------------------------------------------------------
     def haunt_next
+      pbMessage(haunt_words)
+    end
+
+    def haunt_words(ghost = nil)
       self.wild_forced = true
-      pbMessage(_INTL("The next lone wild Pokémon will have a Ghost inside."))
+      @wild_ghost = ghost
+      return _INTL("The next lone wild Pokémon will have a Ghost inside.") unless ghost
+      return _INTL("The next lone wild Pokémon will have a {1} inside (else a Ghost that fits).", species_name(ghost))
     end
 
     def possess_next
-      if Team.possessed_somewhere?
-        pbMessage(_INTL("One of your Pokémon is possessed already. Clear it first."))
-      elsif Ghosts.hosts.empty?
-        pbMessage(_INTL("None of your team can be possessed (Ghosts, Eggs and fainted Pokémon can't)."))
-      else
-        self.forced = true
-        pbMessage(_INTL("The next step, a Ghost will possess one of your team."))
+      pbMessage(possess_words)
+    end
+
+    # pick: {:host, :ghost, :will, :stay} (see Debug.pick)
+    def possess_words(pick = nil)
+      return _INTL("One of your Pokémon is possessed already. Clear it first.") if Team.possessed_somewhere?
+      ghost = pick && pick[:ghost]
+      hosts = Ghosts.hosts(nil, ghost)
+      hosts = hosts.select { |p| Note.pid_of(p) == pick[:host] } if pick && pick[:host]
+      if hosts.empty?
+        return _INTL("None of your team can be possessed (Ghosts, Eggs and fainted Pokémon can't).") unless pick && (pick[:host] || ghost)
+        return _INTL("That one can't take a {1}: There's no such fusion. Pick another.", species_name(ghost)) if ghost
+        return _INTL("That one can't be possessed (Ghosts, Eggs and fainted Pokémon can't).")
       end
+      self.forced = true
+      @pick = pick && pick.values.any? ? pick : nil
+      return _INTL("The next step, a Ghost will possess one of your team.") unless @pick
+      who = pick[:host] ? hosts.first.name : _INTL("one of your team")
+      return _INTL("The next step, a {1} will possess {2}.", ghost ? species_name(ghost) : _INTL("Ghost"), who)
     end
 
     def leave_soon
+      pbMessage(leave_words)
+    end
+
+    def leave_words
       pkmn = Team.owned.find { |p| Note.possessed?(p) }
-      unless pkmn
-        pbMessage(_INTL("None of your Pokémon is possessed."))
-        return
-      end
+      return _INTL("None of your Pokémon is possessed.") unless pkmn
       Note.write(pkmn, Note.read(pkmn).merge(:battles_left => 1))
-      pbMessage(_INTL("{1}'s Ghost leaves after its next battle.", pkmn.name))
+      return _INTL("{1}'s Ghost leaves after its next battle.", pkmn.name)
     end
 
     def give_tag
-      unless $PokemonBag && $PokemonBag.pbStoreItem(CleanseTag::ITEM, 1)
-        pbMessage(_INTL("There's no room in the Bag for a Cleanse Tag."))
-        return
+      pbMessage(tag_words)
+    end
+
+    def tag_words(count = 1)
+      unless $PokemonBag && $PokemonBag.pbStoreItem(CleanseTag::ITEM, count)
+        return _INTL("There's no room in the Bag for a Cleanse Tag.")
       end
-      pbMessage(_INTL("You got a Cleanse Tag. You have {1} now.", CleanseTag.count))
+      return _INTL("You got a Cleanse Tag. You have {1} now.", CleanseTag.count) if count == 1
+      return _INTL("You got {1} Cleanse Tags. You have {2} now.", count, CleanseTag.count)
     end
 
     # The clock to an hour (the game's own UnrealTime.advance_to), the map's tone at once
     def time_to(hour)
-      unless defined?(::UnrealTime) && ::UnrealTime.respond_to?(:advance_to)
-        pbMessage(_INTL("The game's clock can't be moved here."))
-        return
-      end
-      ::UnrealTime.advance_to(hour)
+      pbMessage(time_words(hour))
+    end
+
+    def time_words(hour, minute = 0)
+      return _INTL("The game's clock can't be moved here.") unless defined?(::UnrealTime) && ::UnrealTime.respond_to?(:advance_to)
+      ::UnrealTime.advance_to(hour, minute)
       Season.refresh if defined?(Season)
-      pbMessage(_INTL("It's {1}:00 now.", hour))
+      return _INTL("It's {1}:{2} now.", hour, format("%02d", minute))
     end
 
     def clear
+      pbMessage(clear_words)
+    end
+
+    def clear_words
       count = 0
       Team.owned.each do |pkmn|
         next unless Note.possessed?(pkmn)
@@ -93,7 +171,11 @@ module GhostlyPossession
       Shared.quiet_steps = Team::COOLDOWN
       self.forced = false
       self.wild_forced = false
-      pbMessage(_INTL("{1} possessed Pokémon cleared.", count))
+      return _INTL("{1} possessed Pokémon cleared.", count)
+    end
+
+    def species_name(species)
+      return (::GameData::Species.get(species).name rescue species.to_s)
     end
 
     def boot

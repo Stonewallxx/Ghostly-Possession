@@ -134,6 +134,7 @@ module GhostlyPossession
 
     # This night's track (the night that began before 5 am counts as the evening before)
     def track
+      return Debug.track if Debug.track && TRACKS.include?(Debug.track)
       now = pbGetTimeNow
       day = now.yday + now.year * 366
       day -= 1 if now.hour < 5
@@ -196,6 +197,7 @@ module GhostlyPossession
     # The Witchy Hat
     #--------------------------------------------------------------------------
     def halloween?(now = Time.now)
+      return true if Debug.halloween?
       return now.month == 10 && now.day == 31
     end
 
@@ -220,12 +222,18 @@ module GhostlyPossession
     #--------------------------------------------------------------------------
     # Night Ghosts
     #--------------------------------------------------------------------------
+    # (the Debug Menu's A Ghost on the Next Encounter: any time, no chance, once)
     def ghost_encounter?(enc_type, chance_rolls)
-      return false unless season? && night? && chance_rolls.to_i <= 1
+      forced = Debug.night_ghost?
+      return false unless season? && (night? || forced) && chance_rolls.to_i <= 1
       kind = (::GameData::EncounterType.get(enc_type).type rescue nil)
       return false unless ROUTE_KINDS.include?(kind)
       return false if $PokemonTemp && $PokemonTemp.respond_to?(:pokeradar) && $PokemonTemp.pokeradar
       return false if (pbInSafari? rescue false) || (pbInBugContest? rescue false)
+      if forced
+        Debug.night_ghost = false
+        return true
+      end
       return rand(GHOST_CHANCE) == 0
     end
 

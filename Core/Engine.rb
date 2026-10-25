@@ -239,6 +239,34 @@ module GhostlyPossession
       GhostlyPossession.log("#{pkmn.name rescue "?"}'s best stats couldn't be worked out: #{e.class}: #{e.message}")
     end
 
+    # How a possessed Pokémon is in battle, for screens (the Summary, his
+    # pick: Show It Possessed): [the fusion, the stats possession raises
+    # (0 total HP .. 5 Speed), the Ghost's move's slot]. Outside battle a copy
+    # with its own move list is made the fusion and let go of at once, so the
+    # Pokémon itself is never touched and nothing stays applied (autosaves
+    # wait while anything is); in battle it's already the fusion.
+    def battle_view(pkmn)
+      return nil unless pkmn && !pkmn.egg? && Note.possessed?(pkmn)
+      if applied?(pkmn)
+        host = host_stats(pkmn)
+        raised = (0...6).select { |i| pkmn.instance_variable_get(STAT_IVARS[i]).to_i > host[i] }
+        return [pkmn, raised, snapshot(pkmn)[:slot]]
+      end
+      own = STAT_IVARS.map { |iv| pkmn.instance_variable_get(iv).to_i }
+      copy = pkmn.clone
+      copy.instance_variable_set(:@moves, pkmn.moves.map { |m| m.clone })
+      return nil unless apply(copy)
+      slot = snapshot(copy)[:slot]
+      @applied.delete(copy)
+      copy.instance_variable_set(:@name, pkmn.name)      # (its own name: the fusion's otherwise)
+      raised = (0...6).select { |i| copy.instance_variable_get(STAT_IVARS[i]).to_i > own[i] }
+      return [copy, raised, slot]
+    rescue StandardError => e
+      @applied.delete(copy) if copy
+      GhostlyPossession.log("#{pkmn.name rescue "?"}'s battle view couldn't be made: #{e.class}: #{e.message}")
+      return nil
+    end
+
     # HP keeps the damage it had against the new total (the game's calc_stats
     # works it out against the fusion's own total, which can be smaller and
     # left it at 0); a fainted one stays at 0, a living one keeps at least 1

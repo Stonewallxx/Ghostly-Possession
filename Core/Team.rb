@@ -78,12 +78,19 @@ module GhostlyPossession
       # and the one possessed would look gone)
       return unless quiet_step?
       return if possessed_somewhere?
-      ghost = Ghosts.pick
+      pick = forced ? Debug.pick : nil
+      ghost = pick && pick[:ghost] || Ghosts.pick
       return unless ghost
       hosts = Ghosts.hosts(nil, ghost)
+      hosts = hosts.select { |p| Note.pid_of(p) == pick[:host] } if pick && pick[:host]
       return if hosts.empty?
       host = hosts[rand(hosts.length)]
-      return unless possess(host, Ghosts.note_for(host, ghost))
+      note = Ghosts.note_for(host, ghost)
+      if pick
+        note[:will] = pick[:will] if pick[:will]
+        note[:stay], note[:battles_left] = pick[:stay], Ghosts::STAY_BATTLES[pick[:stay]] if pick[:stay]
+      end
+      return unless possess(host, note)
       handled[0] = true
       Debug.forced = false
     end

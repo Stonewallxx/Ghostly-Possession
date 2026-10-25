@@ -7,7 +7,7 @@
 # Light: a soft fall-off, no rings), and every light cutting its own patch:
 # the map's own lamps (its OutdoorLight / Light events) and anything that
 # says it gives light (Season.light: wisps, the trail's ball, graves).
-# Midnight Violet's tint is under it (Core/Season.rb).
+# Deepest Violet's tint is under it (Core/Season.rb).
 #
 # While it's up it's the game's darkness sprite ($PokemonTemp.darknessSprite),
 # so Flash and the Lantern widen it with the game's own code, and Flash may
@@ -30,6 +30,9 @@ module GhostlyPossession
     FALL = 2.0           # how gently it fades past that (a subtracting sprite takes dim
                          # pixels to black sooner than the mockups' overlay: these match it)
     Z = 99_998           # the game's darkness sprite's
+    DEPTH = 0.28         # how much of the dark is taken off the scene (his pick
+                         # 2026-10-25: Shapes Showing; full dark left nothing to
+                         # make out, the night's own colours being low)
 
     @dark = nil
     @flash_map = nil
@@ -169,7 +172,7 @@ module GhostlyPossession
         s = SeasonDark.strength
         @sprite.visible = s > 0
         return if s <= 0
-        @sprite.opacity = (255 * s).round
+        @sprite.opacity = (255 * DEPTH * s).round
         SeasonDark.note_flash
         refresh
       rescue StandardError => e
@@ -180,6 +183,18 @@ module GhostlyPossession
       def refresh
         b = @sprite.bitmap
         b.fill_rect(0, 0, b.width, b.height, SeasonDark.white)
+        # the town's lights' patches, made ahead: one picture laid in
+        tp = defined?(TownLights) && TownLights.respond_to?(:dark_picture) ? TownLights.dark_picture : nil
+        if tp
+          pic, x, y, scale, opacity = tp
+          b.stretch_blt(Rect.new(x.round, y.round, (pic.width * scale).round, (pic.height * scale).round), pic, pic.rect, opacity.to_i)
+        end
+        # the lighthouses' beams, where they fall now
+        if defined?(TownLights) && TownLights.respond_to?(:dark_beams)
+          TownLights.dark_beams.each do |pic, cell, x, y, scale, opacity|
+            b.stretch_blt(Rect.new(x.round, y.round, (cell.width * scale).round, (cell.height * scale).round), pic, cell, opacity.to_i)
+          end
+        end
         st = SeasonDark.stamp
         SeasonDark.lights(@radius).each do |x, y, r|
           r = r.to_i
