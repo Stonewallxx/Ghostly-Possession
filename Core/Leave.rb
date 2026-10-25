@@ -24,6 +24,11 @@
 #   GhostlyPossession::Leave.queue_ghost(note, level)  a wild one's Ghost cast
 #                                                   out in battle: its own
 #                                                   battle once on the map
+#   GhostlyPossession::Leave.queue_leapt(host, from)   a wild one's Ghost
+#                                                   leaped into yours: the
+#                                                   Possessed! card on the map
+#   (both wait in the saved data, Shared, so a save and reload between the
+#   battle and the map doesn't lose them)
 #
 # Afterwards the Pokémon is itself again (its own move back too: the Ghost's
 # move only ever sat in its slot during battles), nobody is possessed, and
@@ -65,13 +70,13 @@ module GhostlyPossession
     # A wild one's Ghost cast out in battle (WildBattle.rb): its own battle,
     # on the map, once the battle's over
     def queue_ghost(note, level)
-      @ghost = [note, level]
+      Shared.waiting_ghost = [note.dup, level.to_i]
     end
 
     # A wild one's Ghost leaped into one of yours (WildBattle.rb): the
     # Possessed! card, on the map, once the battle's over
     def queue_leapt(host, from)
-      @leapt = [Note.pid_of(host), from]
+      Shared.waiting_leapt = [Note.pid_of(host), from.to_s]
     end
 
     # (never in a battle that started before the map's turn came: its party
@@ -87,18 +92,20 @@ module GhostlyPossession
     #--------------------------------------------------------------------------
     def update
       scrub_wild
-      return unless @pending || @ghost || @leapt || (Shared.possessed_id && due)
+      leapt = Shared.waiting_leapt
+      ghost = Shared.waiting_ghost
+      return unless @pending || ghost || leapt || (Shared.possessed_id && due)
       return unless ready?
-      if @leapt
-        pid, from = @leapt
-        @leapt = nil
+      if leapt
+        pid, from = leapt
+        Shared.waiting_leapt = nil
         host = $Trainer.party.find { |p| p && Note.pid_of(p) == pid && Note.possessed?(p) }
         UI.possessed(host, from) if host
         return
       end
-      if @ghost
-        note, level = @ghost
-        @ghost = nil
+      if ghost
+        note, level = ghost
+        Shared.waiting_ghost = nil
         GhostBattle.start(note, level, true)
         return
       end
@@ -113,8 +120,8 @@ module GhostlyPossession
       leave(pkmn) if pkmn
     rescue StandardError => e
       @pending = nil
-      @ghost = nil
-      @leapt = nil
+      Shared.waiting_ghost = nil
+      Shared.waiting_leapt = nil
       GhostlyPossession.log("Leaving or casting out failed: #{e.class}: #{e.message}")
     end
 

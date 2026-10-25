@@ -26,8 +26,8 @@ module GhostlyPossession
     # The Stay hint's short form, by the battles it has left (as Info's)
     def stay_word(note)
       left = note[:battles_left].to_i
-      return _INTL(STAYS[0]) if left <= 2
-      return _INTL(STAYS[1]) if left <= 6
+      return _INTL(STAYS[0]) if left <= Ghosts::STAY_HINTS[0]
+      return _INTL(STAYS[1]) if left <= Ghosts::STAY_HINTS[1]
       return _INTL(STAYS[2])
     end
 

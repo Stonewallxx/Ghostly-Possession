@@ -23,9 +23,9 @@ module GhostlyPossession
            "Core/Ghosts.rb", "Core/Team.rb", "Core/Wilds.rb", "Core/Leave.rb", "Core/WildBattle.rb", "Core/CleanseTag.rb",
            "Core/Channeler.rb", "Core/Compat.rb", "Core/Season.rb", "Core/SeasonExtras.rb", "Core/Debug.rb", "Core/Wisps.rb",
            "Core/Spirits.rb", "Core/Fusing.rb", "UI/Shapes.rb", "UI/Moment.rb", "UI/Alone.rb", "UI/Card.rb", "UI/Keep.rb", "UI/Possessed.rb", "UI/PartyLook.rb", "UI/PCLook.rb", "UI/SummaryLook.rb", "UI/Info.rb",
-           "UI/BattleLook.rb", "UI/MapAura.rb", "UI/WispLook.rb", "UI/SpiritLook.rb", "UI/SeasonDark.rb", "UI/TownLights.rb", "UI/Readout.rb", "UI/TitleLook.rb"].freeze unless const_defined?(:FILES, false)
+           "UI/BattleLook.rb", "UI/MapAura.rb", "UI/ClerkHat.rb", "UI/WispLook.rb", "UI/SpiritLook.rb", "UI/SeasonDark.rb", "UI/TownLights.rb", "UI/Readout.rb", "UI/TitleLook.rb"].freeze unless const_defined?(:FILES, false)
   SYSTEMS = [:Settings, :Engine, :Battle, :Control, :Team, :Leave, :GhostBattle, :WildBattle, :CleanseTag, :Channeler,
-             :Compat, :Season, :SeasonExtras, :Debug, :Wisps, :Spirits, :Fusing, :PartyLook, :PCLook, :SummaryLook, :Info, :BattleLook, :MapAura, :WispLook, :SpiritLook, :SeasonDark, :TownLights, :Readout,
+             :Compat, :Season, :SeasonExtras, :Debug, :Wisps, :Spirits, :Fusing, :PartyLook, :PCLook, :SummaryLook, :Info, :BattleLook, :MapAura, :ClerkHat, :WispLook, :SpiritLook, :SeasonDark, :TownLights, :Readout,
              :TitleLook].freeze unless const_defined?(:SYSTEMS, false)
 
   # The version in mod.json.

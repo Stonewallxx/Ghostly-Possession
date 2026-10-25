@@ -30,7 +30,8 @@
 #
 # What's shared sits on $PokemonGlobal the same way (Shared): who is
 # possessed (one Pokémon at a time, by its personal ID), the steps since
-# the last possession ended, and whether the Channeler has been met.
+# the last possession ended, whether the Channeler has been met, and what
+# waits for the map after a battle (a Ghost's own battle, a Possessed! card).
 #==============================================================================
 
 module GhostlyPossession
@@ -109,7 +110,7 @@ module GhostlyPossession
   #----------------------------------------------------------------------------
   module Shared
     IVAR = :@ghostly_possession
-    DEFAULTS = { :possessed => nil, :quiet_steps => 0, :channeler => false }.freeze
+    DEFAULTS = { :possessed => nil, :quiet_steps => 0, :channeler => false, :waiting_ghost => nil, :waiting_leapt => nil }.freeze
 
     module_function
 
@@ -149,6 +150,28 @@ module GhostlyPossession
 
     def channeler_met!
       data[:channeler] = true
+    end
+
+    # What waits for the map after a battle (Leave.rb), kept here so a save
+    # and reload in between doesn't lose it: a cast-out Ghost's own battle
+    # [note, level], and the Possessed! card for a Ghost that leaped
+    # [personal ID, the wild one's name]. Plain data, cleared once shown.
+    def waiting_ghost
+      w = data[:waiting_ghost]
+      return w.is_a?(Array) && w.length == 2 && w[0].is_a?(Hash) ? w : nil
+    end
+
+    def waiting_ghost=(w)
+      data[:waiting_ghost] = w
+    end
+
+    def waiting_leapt
+      w = data[:waiting_leapt]
+      return w.is_a?(Array) && w.length == 2 && w[0].is_a?(Integer) ? w : nil
+    end
+
+    def waiting_leapt=(w)
+      data[:waiting_leapt] = w
     end
   end
 end

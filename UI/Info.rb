@@ -32,8 +32,8 @@ module GhostlyPossession
     # by the battles it has left: the hint stays true as they count down
     def stay_hint(note)
       left = note[:battles_left].to_i
-      return _INTL("It won't stay long.") if left <= 2
-      return _INTL("It'll stay a while.") if left <= 6
+      return _INTL("It won't stay long.") if left <= Ghosts::STAY_HINTS[0]
+      return _INTL("It'll stay a while.") if left <= Ghosts::STAY_HINTS[1]
       return _INTL("It's settling in.")
     end
 

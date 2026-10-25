@@ -43,7 +43,8 @@ module GhostlyPossession
     OTHER_EVOLUTION_LEVEL = 40          # a stone or trade evolution counts from here
     FALLBACK_MOVES = [:LICK, :ASTONISH, :NIGHTSHADE, :SHADOWSNEAK].freeze
     ROLL = [30, 50, 20].freeze          # Calm / Normal / Wild, Short / Normal / Long
-    STAY_BATTLES = [3, 6, 10].freeze    # battles before it leaves, by stay
+    STAY_BATTLES = [5, 10, 15].freeze   # battles before it leaves, by stay (his ask: multiples of 5)
+    STAY_HINTS = [5, 10].freeze         # the Stay hint by battles left: up to 5 "won't stay long", up to 10 "a while", 11+ "settling in"
 
     module_function
 
