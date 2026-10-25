@@ -17,7 +17,13 @@
 #                  (his picks 2026-10-25). Lights don't stack, and a lamp's
 #                  light wins where it overlaps the others.
 #   Cool Light     The Pokemon Centers' panes are a cool white, their light
-#                  cool and a little brighter (his pick: Cool Clinic Light).
+#                  cool and a little brighter (his pick: Cool Clinic Light),
+#                  the panes as bright as the bulbs (his ask, 2026-10-25).
+#   Over Tiles     Glass, bulbs and glow on a tile the game draws over the
+#                  player (a lamp's head, a Center's top: a priority tile)
+#                  come in strips, a tile row each (MapNNNpP, MapNNNgpP), at
+#                  that row's tiles' own z, so the tile doesn't hide its own
+#                  light and a character in front still stands in front.
 #   Pitch Black    Every lit pane, by its size (upper storeys, portholes
 #                  too), door and lamp lifts its own patch of the dark, and
 #                  each ground light its own (his picks 2026-10-25): one
@@ -39,6 +45,12 @@
 #                  Pitch Black its patch flickers with it (one of Season's
 #                  lights).
 #   Lamps          KIF's own lamp glow is hidden while it's on.
+#   Next Door      A map connected to yours that the game has loaded lights
+#                  up too, as it comes into view (his ask 2026-10-25:
+#                  Viridian's arch lit from Route 1): a layer for each loaded
+#                  map with lights, on that map's own sprites and scroll; a
+#                  map coming back into view gets its sprites made quietly
+#                  (Scene_Map#updateSpritesets), so each frame checks.
 #
 # Every picture and spot is made ahead of time by Tools/TownLights
 # (Data/town_lights.json, Graphics/GhostlyPossession/TownLights); the game
@@ -56,7 +68,7 @@ module GhostlyPossession
     PICTURES = "Graphics/GhostlyPossession/TownLights/"
 
     @data = nil
-    @layer = nil
+    @layers = {}          # map id => Layer: the map you're on and the loaded maps next to it
 
     module_function
 
@@ -90,31 +102,78 @@ module GhostlyPossession
       return Season.outdoor? && !Season.dark_effect?
     end
 
+    # The lights are on now (any map's)
+    def on?
+      return wanted? && hours_on?
+    end
+
+    # ...and the map you're on has some
     def active?
-      return wanted? && hours_on? && !entry.nil?
+      return on? && !entry.nil?
     end
 
+    # The map you're on's layer
     def layer
-      return @layer
+      l = $game_map && @layers[$game_map.map_id]
+      return l && !l.disposed? ? l : nil
     end
 
-    def screen_offset
+    def layers
+      return @layers.values.reject(&:disposed?)
+    end
+
+    # The game's maps loaded now: yours, and the ones connected to it in view
+    def loaded_maps
+      list = defined?($MapFactory) && $MapFactory && $MapFactory.respond_to?(:maps) ? $MapFactory.maps.compact : []
+      list = [$game_map] if list.empty? && $game_map
+      return list
+    end
+
+    def map_of(id)
+      return loaded_maps.find { |m| m.map_id == id }
+    end
+
+    # A map with its town lights on now (KIF's own lamp glow hidden there)
+    def lit_map?(id)
+      l = @layers[id]
+      return l && !l.disposed? && on? ? true : false
+    end
+
+    def screen_offset(map = $game_map)
       sub = defined?(::Game_Map::X_SUBPIXELS) ? ::Game_Map::X_SUBPIXELS : 4
-      return [$game_map.display_x / sub, $game_map.display_y / sub]
+      return [map.display_x / sub, map.display_y / sub]
     end
 
-    # Pitch Black's patches (UI/SeasonDark.rb asks each frame): [picture,
-    # screen x, y, its scale, how much of it (the lights' fade)], or nil
+    # The z the game's tiles of a map row and priority have now (the
+    # TilemapRenderer's refresh_tile_z: its grid starts at the screen's top
+    # row; a map next to yours scrolls by whole tiles from it, so its own
+    # rows give the same z)
+    def tile_z(row, priority, map = $game_map)
+      sub = defined?(::Game_Map::Y_SUBPIXELS) ? ::Game_Map::Y_SUBPIXELS : 4
+      top = (map.display_y.to_f / sub).round / 32
+      return (row - top) * 32 + priority * 32 + 32
+    end
+
+    # The light patches (UI/SeasonDark.rb asks each frame): [picture,
+    # screen x, y, its scale, how much of it (the lights' fade)], or nil:
+    # the map you're on's
     def dark_picture
-      return nil unless @layer && @layer.lit? && active?
-      return @layer.holes_picture
+      l = layer
+      return nil unless l && l.lit? && on?
+      return l.holes_picture
+    end
+
+    # ...every lit map's, yours and the ones next to it
+    def dark_pictures
+      return [] unless on?
+      return layers.select(&:lit?).map(&:holes_picture).compact
     end
 
     # ...and the lighthouses' beams' lift, each [picture, its cell, screen x,
     # y, scale, how much of it]
     def dark_beams
-      return [] unless @layer && @layer.lit? && active?
-      return @layer.beam_lifts
+      return [] unless on?
+      return layers.select(&:lit?).flat_map(&:beam_lifts)
     end
 
     def now
@@ -129,8 +188,8 @@ module GhostlyPossession
 
     # Pitch Black's patches for the fires, flickering: [[x, y, radius], ...]
     def fire_lights
-      return [] unless @layer && @layer.lit? && active?
-      return @layer.fire_lights
+      return [] unless on?
+      return layers.select(&:lit?).flat_map(&:fire_lights)
     end
 
     # A beam's cell now: by the clock, a turn every b["turn"] seconds
@@ -146,8 +205,12 @@ module GhostlyPossession
     # The layer on the map (the spriteset updates it and disposes it with itself)
     #--------------------------------------------------------------------------
     class Layer
-      def initialize(e, viewport)
+      attr_accessor :set              # the spriteset it's on
+      attr_reader :map_id
+
+      def initialize(e, viewport, map_id = ($game_map ? $game_map.map_id : 0))
         @entry = e
+        @map_id = map_id
         @lit = picture(viewport, e["overlay"], Z_LIT)
         @glow = picture(viewport, e["glow"], Z_GLOW)
         if @glow
@@ -173,6 +236,10 @@ module GhostlyPossession
           s.opacity = 0
           [x.to_i, y.to_i, s]
         end
+        @strips = []          # [its picture's entry, map row, sprite]
+        @strip_pics = []
+        (e["high"] || []).each { |hp| strips(viewport, hp, false) }
+        (e["high_glow"] || []).each { |hp| strips(viewport, hp, true) }
         @opacity = 0
         @disposed = false
         update
@@ -187,22 +254,47 @@ module GhostlyPossession
         return s
       end
 
+      # A priority picture's strips, a tile row each (the picture shared):
+      # lit glass as it is, glow added
+      def strips(viewport, hp, glow)
+        bmp = Bitmap.new(PICTURES + hp["pic"].to_s)
+        @strip_pics << bmp
+        scale = glow ? (hp["scale"] || 1).to_i : 1
+        hp["rows"].each do |row|
+          s = Sprite.new(viewport)
+          s.bitmap = bmp
+          s.src_rect = Rect.new(0, (row.to_i * 32 - hp["y"].to_i) / scale, bmp.width, 32 / scale)
+          s.zoom_x = s.zoom_y = scale
+          s.blend_type = 1 if glow
+          s.opacity = 0
+          @strips << [hp, row.to_i, s]
+        end
+      end
+
       def disposed?
         return @disposed
       end
 
       def lit?
-        return !@disposed && @opacity > 0
+        return !@disposed && @opacity > 0 && !map.nil?
+      end
+
+      # Its map (the one you're on, or one next to it), or nil once it's gone
+      def map
+        return TownLights.map_of(@map_id)
       end
 
       def holes_picture
-        return nil unless @holes && !@holes.disposed?
-        dx, dy = TownLights.screen_offset
+        m = map
+        return nil unless m && @holes && !@holes.disposed?
+        dx, dy = TownLights.screen_offset(m)
         return [@holes, @entry["hx"].to_i - dx, @entry["hy"].to_i - dy, (@entry["hscale"] || 1).to_f, @opacity]
       end
 
       def beam_lifts
-        dx, dy = TownLights.screen_offset
+        m = map
+        return [] unless m
+        dx, dy = TownLights.screen_offset(m)
         return @beams.map do |b, _s, lift|
           [lift, TownLights.beam_cell(b), b["x"].to_i - dx, b["y"].to_i - dy, (b["scale"] || 1).to_f, @opacity]
         end
@@ -210,7 +302,9 @@ module GhostlyPossession
 
       # Pitch Black's patches for the fires, flickering, faded with the lights
       def fire_lights
-        dx, dy = TownLights.screen_offset
+        m = map
+        return [] unless m
+        dx, dy = TownLights.screen_offset(m)
         k = TownLights.flicker
         return @fires.map { |x, y, _s| [x - dx, y - dy, (FIRE_HOLE * (0.97 + 0.03 * k) * @opacity / 255.0).round] }
       end
@@ -219,6 +313,8 @@ module GhostlyPossession
         return if @disposed
         @fires.each { |_x, _y, s| s.dispose unless s.disposed? }
         @fire_pic.dispose if @fire_pic && !@fire_pic.disposed?
+        @strips.each { |_hp, _row, s| s.dispose unless s.disposed? }
+        @strip_pics.each { |b| b.dispose unless b.disposed? }
         ([@lit, @glow] + @beams.map { |_b, s, _l| s }).compact.each do |s|
           s.bitmap.dispose if s.bitmap && !s.bitmap.disposed?
           s.dispose
@@ -228,12 +324,21 @@ module GhostlyPossession
         @disposed = true
       end
 
+      def sprites
+        return ([@lit, @glow] + @beams.map { |_b, s, _l| s } + @strips.map { |_hp, _r, s| s } + @fires.map { |_x, _y, s| s }).compact
+      end
+
       def update
         return if @disposed
-        target = TownLights.active? ? 255 : 0
+        m = map
+        unless m
+          sprites.each { |s| s.visible = false }
+          return
+        end
+        target = TownLights.on? ? 255 : 0
         step = (255.0 / FADE).ceil
         @opacity = @opacity < target ? [@opacity + step, target].min : [@opacity - step, target].max
-        dx, dy = TownLights.screen_offset
+        dx, dy = TownLights.screen_offset(m)
         [[@lit, "ox", "oy"], [@glow, "gx", "gy"]].each do |s, kx, ky|
           next unless s
           s.opacity = @opacity
@@ -248,6 +353,18 @@ module GhostlyPossession
           s.src_rect = TownLights.beam_cell(b)
           s.x = b["x"].to_i - dx
           s.y = b["y"].to_i - dy
+        end
+        @strips.each do |hp, row, s|
+          s.opacity = @opacity
+          s.visible = @opacity > 0
+          next unless s.visible
+          s.x = hp["x"].to_i - dx
+          s.y = row * 32 - dy
+          # one over its tiles: at the same z the newer sprite is drawn on
+          # top, and KIF's frame rate (C-SYS-01) makes the tiles anew when
+          # its in-between drawing starts or stops (a character one row
+          # nearer is 32 higher still)
+          s.z = TownLights.tile_z(row, hp["p"].to_i, m) + 1
         end
         unless @fires.empty?
           k = TownLights.flicker
@@ -265,21 +382,77 @@ module GhostlyPossession
       end
     end
 
+    # On every map scene (a new map, one coming into view next to yours, after
+    # a battle): a layer for each loaded map with lights, on that map's own
+    # spriteset (it goes with it), the ones whose map left taken down
     def attach(scene)
-      @layer.dispose if @layer && !@layer.disposed?
-      @layer = nil
-      e = entry
-      return unless e && wanted? && scene && scene.respond_to?(:spriteset) && scene.spriteset && defined?(::Spriteset_Map)
-      @layer = Layer.new(e, ::Spriteset_Map.viewport)
-      scene.spriteset.addUserSprite(@layer)
+      unless wanted? && scene && scene.respond_to?(:spriteset) && scene.spriteset && defined?(::Spriteset_Map)
+        clear
+        return
+      end
+      maps = loaded_maps
+      ids = maps.map(&:map_id)
+      @layers.delete_if do |id, l|
+        gone = l.disposed? || !ids.include?(id)
+        l.dispose if gone && !l.disposed?
+        gone
+      end
+      maps.each do |m|
+        e = entry(m.map_id)
+        next unless e
+        set = spriteset_for(scene, m)
+        l = @layers[m.map_id]
+        next if l && !l.disposed? && l.set.equal?(set)
+        l.dispose if l && !l.disposed?
+        l = Layer.new(e, ::Spriteset_Map.viewport, m.map_id)
+        l.set = set
+        set.addUserSprite(l)
+        @layers[m.map_id] = l
+      end
+    end
+
+    # Each frame, after the scene's spritesets update: a map that came into
+    # view again gets its spriteset made quietly (no map scene change), so
+    # one with lights and no layer on that spriteset gets it put up
+    def sync(scene)
+      sets = scene.respond_to?(:spritesets) ? scene.spritesets : nil
+      return unless sets.is_a?(Hash) && wanted?
+      missing = sets.any? do |id, set|
+        next false unless set && entry(id)
+        l = @layers[id]
+        !(l && !l.disposed? && l.set.equal?(set))
+      end
+      attach(scene) if missing
+    rescue StandardError => e
+      GhostlyPossession.log("The town lights next door couldn't be put up: #{e.class}: #{e.message}")
+    end
+
+    module SceneSync
+      def updateSpritesets(*args)
+        ret = super
+        GhostlyPossession::TownLights.sync(self)
+        return ret
+      end
+    end
+
+    def spriteset_for(scene, map)
+      sets = scene.respond_to?(:spritesets) ? scene.spritesets : nil
+      set = sets.is_a?(Hash) ? sets[map.map_id] : nil
+      return set || scene.spriteset
+    end
+
+    def clear
+      @layers.each_value { |l| l.dispose unless l.disposed? }
+      @layers = {}
     end
 
     # KIF's own lamp glow (its OutdoorLight events' LE picture) hidden while
-    # the town's lights are on
+    # its map's town lights are on
     module HideLampGlow
       def update
         ret = super
-        @light.opacity = 0 if @light && GhostlyPossession::TownLights.layer && GhostlyPossession::TownLights.active?
+        id = @map ? @map.map_id : ($game_map ? $game_map.map_id : nil)
+        @light.opacity = 0 if @light && GhostlyPossession::TownLights.lit_map?(id)
         return ret
       end
     end
@@ -289,6 +462,9 @@ module GhostlyPossession
       Season.light(:town_fires) { GhostlyPossession::TownLights.fire_lights } if defined?(Season) && Season.respond_to?(:light)
       if defined?(::LightEffect_DayNight) && !::LightEffect_DayNight.ancestors.include?(HideLampGlow)
         ::LightEffect_DayNight.prepend(HideLampGlow)
+      end
+      if defined?(::Scene_Map) && ::Scene_Map.method_defined?(:updateSpritesets) && !::Scene_Map.ancestors.include?(SceneSync)
+        ::Scene_Map.prepend(SceneSync)
       end
       if defined?(::Events) && ::Events.respond_to?(:onMapSceneChange) && !@booted
         ::Events.onMapSceneChange += proc { |_sender, e|

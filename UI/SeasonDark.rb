@@ -1,5 +1,5 @@
 #==============================================================================
-# Ghostly Possession: Pitch Black
+# Ghostly Possession: Pitch Black, and the night's light patches
 #==============================================================================
 # The Darkness setting's darkest (his picks 2026-10-24): the caves' darkness
 # brought outdoors at night, with more room (the Wider Circle: 96 px round
@@ -7,7 +7,7 @@
 # Light: a soft fall-off, no rings), and every light cutting its own patch:
 # the map's own lamps (its OutdoorLight / Light events) and anything that
 # says it gives light (Season.light: wisps, the trail's ball, graves).
-# Deepest Violet's tint is under it (Core/Season.rb).
+# The lit night's tint (Season::LIT) is under it (Core/Season.rb).
 #
 # While it's up it's the game's darkness sprite ($PokemonTemp.darknessSprite),
 # so Flash and the Lantern widen it with the game's own code, and Flash may
@@ -18,6 +18,14 @@
 # It's a subtracting sprite: white where it's dark (taking everything down to
 # black), with a soft black stamp at each light (taking nothing away there).
 # Each frame is one fill and a stamp per light.
+#
+# With Light Patches on (his picks 2026-10-25: Off / Self / On / On + Self),
+# Deepest Violet and Midnight Violet are the same sprite at their own depth
+# (Season::DARK: 30 and 48 off): On, the same patches lifting them back to
+# the lit night round every light; Self, the light round you (96 px); On +
+# Self, both. They aren't the game's darkness (no Flash or Lantern for
+# them). Off, they're a plain tone (Core/Season.rb), and Pitch Black (which
+# always has the light round you) keeps only that.
 #==============================================================================
 
 module GhostlyPossession
@@ -49,8 +57,18 @@ module GhostlyPossession
     end
 
     def wanted?
-      return false unless Season.pitch_black? && $game_map
+      return false unless Season.dark_over? && $game_map
       return Season.outdoor? && !Season.dark_map? && !Season.dark_effect?
+    end
+
+    # How much of the dark is taken off the scene: Pitch Black's, or the Darkness's own
+    def depth
+      return Season.pitch_black? ? DEPTH : Season::DARK.fetch(Season.darkness, 0) / 255.0
+    end
+
+    # Every light lifts its own patch (Light Patches On)
+    def patches?
+      return Settings.light_patches?
     end
 
     # 0 by day, half at 9 pm and 4 am, full at night (minute by minute)
@@ -71,6 +89,11 @@ module GhostlyPossession
         @dark = Dark.new
         scene.spriteset.addUserSprite(@dark)
       end
+      # (only Pitch Black is the game's darkness: Flash and the Lantern widen it)
+      unless Season.pitch_black?
+        $PokemonTemp.darknessSprite = nil if $PokemonTemp && $PokemonTemp.darknessSprite.equal?(@dark)
+        return
+      end
       $PokemonTemp.darknessSprite = @dark if $PokemonTemp
       if @flash_map && @flash_map == map_id && $PokemonGlobal
         $PokemonGlobal.flashUsed = true
@@ -90,14 +113,22 @@ module GhostlyPossession
       @flash_map = $game_map.map_id if $PokemonGlobal && $PokemonGlobal.flashUsed && $game_map
     end
 
+    # The light events of your map and the loaded maps next to it
+    # (made again when the loaded maps change: one coming back into view is a new map)
     def lamps
-      @lamps ||= ($game_map ? $game_map.events.values.select { |ev| ev.name.to_s[/\A(outdoor)?light/i] } : [])
+      maps = defined?(TownLights) && TownLights.respond_to?(:loaded_maps) ? TownLights.loaded_maps : [$game_map].compact
+      key = maps.map(&:object_id)
+      return @lamps if @lamps && @lamps_key == key
+      @lamps_key = key
+      @lamps = maps.flat_map { |m| m.events.values.select { |ev| ev.name.to_s[/\A(outdoor)?light/i] } }
       return @lamps
     end
 
-    # [[x, y, radius], ...] on the screen: you, the map's lamps, the rest
+    # [[x, y, radius], ...] on the screen: you (Pitch Black, or Light Patches' Self), and with
+    # every light's patches the map's lamps and the rest
     def lights(radius)
-      list = [[$game_player.screen_x, $game_player.screen_y - 16, radius]]
+      list = Season.pitch_black? || Settings.self_patch? ? [[$game_player.screen_x, $game_player.screen_y - 16, radius]] : []
+      return list unless patches?
       lamps.each { |ev| list << [ev.screen_x, ev.screen_y - 16, LAMP] }
       return list + Season.lights
     end
@@ -172,8 +203,8 @@ module GhostlyPossession
         s = SeasonDark.strength
         @sprite.visible = s > 0
         return if s <= 0
-        @sprite.opacity = (255 * DEPTH * s).round
-        SeasonDark.note_flash
+        @sprite.opacity = (255 * SeasonDark.depth * s).round
+        SeasonDark.note_flash if Season.pitch_black?
         refresh
       rescue StandardError => e
         GhostlyPossession.log("Pitch Black couldn't be drawn: #{e.class}: #{e.message}")
@@ -183,14 +214,14 @@ module GhostlyPossession
       def refresh
         b = @sprite.bitmap
         b.fill_rect(0, 0, b.width, b.height, SeasonDark.white)
-        # the town's lights' patches, made ahead: one picture laid in
-        tp = defined?(TownLights) && TownLights.respond_to?(:dark_picture) ? TownLights.dark_picture : nil
-        if tp
-          pic, x, y, scale, opacity = tp
+        # the town's lights' patches, made ahead: a picture for each lit map
+        # (yours and the ones next to it), laid in
+        tps = SeasonDark.patches? && defined?(TownLights) && TownLights.respond_to?(:dark_pictures) ? TownLights.dark_pictures : []
+        tps.each do |pic, x, y, scale, opacity|
           b.stretch_blt(Rect.new(x.round, y.round, (pic.width * scale).round, (pic.height * scale).round), pic, pic.rect, opacity.to_i)
         end
         # the lighthouses' beams, where they fall now
-        if defined?(TownLights) && TownLights.respond_to?(:dark_beams)
+        if SeasonDark.patches? && defined?(TownLights) && TownLights.respond_to?(:dark_beams)
           TownLights.dark_beams.each do |pic, cell, x, y, scale, opacity|
             b.stretch_blt(Rect.new(x.round, y.round, (cell.width * scale).round, (cell.height * scale).round), pic, cell, opacity.to_i)
           end
@@ -213,7 +244,7 @@ module GhostlyPossession
       old = ::HiddenMoveHandlers::CanUseMove[:FLASH]
       return unless old
       ::HiddenMoveHandlers::CanUseMove.add(:FLASH, proc { |move, pkmn, showmsg|
-        if GhostlyPossession::SeasonDark.up? && !($PokemonGlobal && $PokemonGlobal.flashUsed)
+        if GhostlyPossession::SeasonDark.up? && GhostlyPossession::Season.pitch_black? && !($PokemonGlobal && $PokemonGlobal.flashUsed)
           next pbCheckHiddenMoveBadge(::Settings::BADGE_FOR_FLASH, showmsg) ? true : false
         end
         next old.call(move, pkmn, showmsg)

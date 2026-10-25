@@ -4,12 +4,17 @@
 # With Spooky Season On and a Darkness (his picks 2026-10-24), nights on
 # outdoor maps turn violet and darker than KIF's own:
 #
-#   Deepest Violet   Tone(-114, -166, -70, 120)  (a new save's)
-#   Midnight Violet  Tone(-150, -202, -106, 120) (his ask 2026-10-25: halfway
-#                    from Deepest Violet to Pitch Black's dark, which takes
-#                    another 71 off: 28% of white)
-#   Pitch Black      Deepest Violet under a smooth dark round you, every
-#                    light cutting its own patch (UI/SeasonDark.rb)
+#   Deepest Violet   the lit night, Tone(-114, -166, -70, 120), 30 off (a new
+#                    save's)
+#   Midnight Violet  the lit night 48 off
+#   Pitch Black      the lit night 71 off (28% of white), but round you
+#
+# With Light Patches On (his picks 2026-10-25: Light Patches, A Little Darker,
+# Deepest Violet 30 off, the patches a switch of their own, On), each is the
+# lit night's tone with its dark over it (UI/SeasonDark.rb), every light
+# lifting its own patch back to the lit night. Off, Deepest and Midnight
+# Violet are their shade as a plain tone; Pitch Black keeps only the light
+# round you.
 #
 # The night comes in as KIF's own evening until 8 pm, halfway at 9 pm, the
 # season's from 10 pm to 3 am, halfway at 4 am, KIF's morning from 5 (the
@@ -17,19 +22,22 @@
 # EBDX's battle backdrops take the same night (BattleSceneRoom#daylightTint).
 # The Darkrai darkness still wins: while it's on, nothing here changes.
 #
-# Lights in the dark: anything that gives light says where, for Pitch Black
-# (one light, or a list of them).
+# Lights in the dark: anything that gives light says where, for the light
+# patches (one light, or a list of them).
 #   GhostlyPossession::Season.light(:wisp) { [screen_x, screen_y, radius] }
 #   GhostlyPossession::Season.unlight(:wisp)
 #==============================================================================
 
 module GhostlyPossession
   module Season
-    # [red, green, blue, gray] by Darkness (Pitch Black's night is Deepest
-    # Violet, its own dark over it)
-    TONES = { 1 => [-114, -166, -70, 120], 2 => [-150, -202, -106, 120], 3 => [-114, -166, -70, 120] }.freeze
-    # Battles have no dark of their own: Pitch Black's are Midnight Violet
-    BATTLE = { 1 => 1, 2 => 2, 3 => 2 }.freeze
+    LIT = [-114, -166, -70, 120].freeze       # the lit night [red, green, blue, gray]: what light patches lift back to
+    # Each Darkness's dark, off the lit night away from lights (Pitch Black's
+    # is UI/SeasonDark.rb's DEPTH, 28% of white)
+    DARK = { 1 => 30, 2 => 48 }.freeze
+    # Each Darkness's shade as a plain tone (Light Patches Off; battles, which
+    # have no dark of their own: Pitch Black's are Midnight Violet's)
+    SHADE = { 1 => 1, 2 => 2, 3 => 2 }.transform_values { |d| (LIT[0, 3].map { |v| v - DARK[d] } + [LIT[3]]).freeze }.freeze
+    BATTLE = SHADE
     EBDX_NIGHT = [-120, -100, -60, 0].freeze      # EBDX's own night backdrop
     @lights = {}
 
@@ -45,6 +53,17 @@ module GhostlyPossession
 
     def pitch_black?
       return darkness == 3
+    end
+
+    # The night's dark goes over the scene (UI/SeasonDark.rb): with Light
+    # Patches on any value but Off (every light's, yours or both), or on Pitch Black
+    def dark_over?
+      return pitch_black? || (on? && (Settings.light_patches? || Settings.self_patch?))
+    end
+
+    # The map's night tone: the lit night when its dark goes over it, else its shade
+    def tone_for(d = darkness)
+      return d == 3 || (d > 0 && (Settings.light_patches? || Settings.self_patch?)) ? LIT : SHADE[d]
     end
 
     # How far into the season's night an hour is: none, half or full
@@ -77,7 +96,7 @@ module GhostlyPossession
     def tone_at(hour, kif)
       s = share(hour)
       return kif if !on? || s <= 0
-      return mix(kif, TONES[darkness], s)
+      return mix(kif, tone_for, s)
     end
 
     # The Darkrai darkness (or a map it darkens) wins
@@ -148,7 +167,7 @@ module GhostlyPossession
       return unless data && sprites
       return if !data["outdoor"] && !data["sky"]
       return if room.instance_variable_get(:@sunny)
-      tone = Tone.new(*mix(EBDX_NIGHT, TONES[BATTLE[darkness]], s))
+      tone = Tone.new(*mix(EBDX_NIGHT, BATTLE[darkness], s))
       room.instance_variable_set(:@daylightTone, tone)
       sprites.each_key do |key|
         next unless sprites[key]

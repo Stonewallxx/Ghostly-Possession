@@ -36,7 +36,8 @@ module GhostlyPossession
   module Compat
     HOLD = 60                          # frames the walking wilds wait after a battle (a second)
     FLICKER_WAIT = [300, 600].freeze   # frames between flickers
-    FLICKER_FADE = 10                  # frames to fade out, and back in
+    FLICKER_FADE = 30                  # frames to fade out, and back in (his ask 2026-10-25: slower; was 10)
+    FLICKER_GONE = 45                  # frames it stays gone before it shows again (his ask: a little longer)
     FLICKER_NEAR = 2                   # never while you're this close (tiles)
     FLICKER_HOP = (2..3).freeze        # how far it reappears (tiles)
 
@@ -109,7 +110,7 @@ module GhostlyPossession
 
     #--------------------------------------------------------------------------
     # Flickering (kept on the event as plain values: [:wait, frame], [:out,
-    # x, y], [:in])
+    # x, y], [:gone, frame], [:in])
     #--------------------------------------------------------------------------
     def flicker(ev)
       return unless possessed_ow?(ev)
@@ -135,8 +136,12 @@ module GhostlyPossession
         ev.opacity = [ev.opacity - 255 / FLICKER_FADE, 0].max
         if ev.opacity == 0 && !ev.moving? && !ev.jumping?
           ev.moveto(st[1], st[2]) if free_spot?(ev, st[1], st[2])
-          st = [:in]
+          st = [:gone, now + FLICKER_GONE]
         end
+      when :gone
+        ev.opacity = 0
+        # (a clock that jumped, as after loading, doesn't keep it gone)
+        st = [:in] if now >= st[1] || st[1] - now > FLICKER_GONE
       when :in
         ev.opacity = [ev.opacity + 255 / FLICKER_FADE, 255].min
         st = [:wait, now + wait_frames] if ev.opacity >= 255

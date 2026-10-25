@@ -6,9 +6,11 @@
 # tiny motes circling it (the far one passes under the flame), a soft halo
 # and a faint pool of light on the ground; it bobs and its tip flickers.
 # Never night-tinted (plain sprites; the game tints only map characters), its
-# glow added light (blend_type 1). Fade and Reappear: it shrinks and fades as
-# its motes scatter, then fades in further on, small and faint first. At the
-# trail's end it sinks into the ground.
+# glow added light (blend_type 1). Fade and Reappear: it shrinks and fades
+# slowly as its two motes leave it and fly on along the trail to where it'll
+# show, bigger and brighter, a short tail behind each (his pick 2026-10-25:
+# Lead the Way; often off screen: follow them), then fades in further on,
+# small and faint first. At the trail's end it sinks into the ground.
 #
 # The treasure's ball (gp-wisp-ball, Glow and Motes): the game's own item
 # ball, night-tinted like any map sprite, with a purple halo and pool of
@@ -21,7 +23,8 @@
 # it's lost. With Kanto Reloaded a toast as it appears (Flame Icon, his pick):
 # "A strange light flickers nearby..."
 #
-# Drawn with the map's viewport (it scrolls with the map: Wisps.screen_xy)
+# Drawn with the map's viewport (it scrolls with the map: Wisps.trail_xy, on
+# the map next door too)
 # as one of its spriteset's user sprites, attached again whenever the map's
 # sprites are made again (battles, transfers, a load).
 #==============================================================================
@@ -47,6 +50,7 @@ module GhostlyPossession
     LIFT = 26                      # how high it floats over the ground (px)
     Z = 1500                       # over the map's characters and lights
     BOB = [0, -1, -2, -1].freeze
+    TAIL = 6                       # a flying mote's tail (glows behind it)
     SOUNDS = { :appear => ["Anim/PRSFX- Confuse Ray", 70], :hop => ["Saint9", 50],
                :sink => ["Saint8", 60], :lost => ["Darkness6", 50] }.freeze
 
@@ -170,6 +174,15 @@ module GhostlyPossession
           dot.ox = dot.oy = 1
           [glow, dot]
         end
+        # Lead the Way: each mote flying on, its head, its dot and its tail
+        @travel = 2.times.map do
+          head = add_sprite(viewport, WispLook.glow(13, HALO, 1.0), Z + 1)
+          dot = Sprite.new(viewport)
+          dot.bitmap = WispLook.mote
+          dot.ox = dot.oy = 1
+          dot.z = Z + 2
+          [head, dot, TAIL.times.map { add_sprite(viewport, WispLook.glow(6, HALO, 0.5), Z + 1) }]
+        end
         hide
       end
 
@@ -184,7 +197,7 @@ module GhostlyPossession
       end
 
       def sprites
-        return [@pool, @halo, @flame] + @motes.flatten
+        return [@pool, @halo, @flame] + @motes.flatten + @travel.flatten
       end
 
       def hide
@@ -198,7 +211,7 @@ module GhostlyPossession
           hide
           return
         end
-        x, y, phase, t, len = v
+        x, y, phase, t, len, ahead = v
         p = [t.to_f / [len, 1].max, 1.0].min
         o, k, lift, spread = 1.0, 1.0, LIFT, 1.0
         case phase
@@ -209,7 +222,7 @@ module GhostlyPossession
         end
         frame = Graphics.frame_count
         f = (frame / 8) % FLAMES.length
-        sx, gy = Wisps.screen_xy(x, y)
+        sx, gy = Wisps.trail_xy(x, y)
         gy -= 4
         cy = gy - lift + BOB[(frame / 12) % BOB.length]
         alpha = (255 * o).round
@@ -217,6 +230,12 @@ module GhostlyPossession
         place(@halo, sx, cy - 4, alpha, k * (f.even? ? 1.0 : 1.08))
         @flame.src_rect.set(f * 18, 0, 18, 28)
         place(@flame, sx, cy, alpha, k)
+        if phase == :out && ahead && ahead.length > 1
+          @motes.flatten.each { |s| s.visible = false }
+          fly(ahead, p, frame)
+          return
+        end
+        @travel.flatten.each { |s| s.visible = false }
         @motes.each_with_index do |(glow, dot), n|
           ang = frame * 0.05 + Math::PI / 4 + n * Math::PI
           mx = sx + (Math.cos(ang) * 15 * k * spread).round
@@ -226,6 +245,45 @@ module GhostlyPossession
           place(dot, mx, my, alpha, 1.0)
           glow.z = dot.z = z
         end
+      end
+
+      # Lead the Way: the motes fly on along the trail's tiles to where it'll
+      # show (eased: slow away, slow in), faint at first, each circling the
+      # other and rising in an arc, a short tail behind
+      def fly(ahead, p, frame)
+        pts = ahead.map { |tx, ty| gx, gy = Wisps.trail_xy(tx, ty); [gx, gy - 4 - LIFT - 8] }
+        q = p * p * (3 - 2 * p)
+        fade = 0.35 + 0.65 * [p * 3, 1.0].min
+        @travel.each_with_index do |(head, dot, tail), n|
+          (0..TAIL).each do |back|
+            qq = [q - back * 0.025, 0.0].max
+            ax, ay = along(pts, qq)
+            ang = frame * 0.12 + n * Math::PI - back * 0.12
+            mx = ax + Math.cos(ang) * 10
+            my = ay + Math.sin(ang) * 6 - Math.sin(qq * Math::PI) * 14
+            if back == 0
+              place(head, mx, my, (255 * fade).round, 1.0)
+              place(dot, mx, my, (255 * fade).round, 2.0)
+            else
+              place(tail[back - 1], mx, my, (255 * fade * 0.5 * (1 - back / (TAIL + 1.0))).round, 1.0)
+            end
+          end
+        end
+      end
+
+      # The point q (0 to 1) of the way along a line of points
+      def along(pts, q)
+        lens = pts.each_cons(2).map { |a, b| Math.hypot(b[0] - a[0], b[1] - a[1]) }
+        d = q * lens.sum
+        lens.each_with_index do |len, i|
+          if d <= len || i == lens.length - 1
+            f = len > 0 ? [d / len, 1.0].min : 0.0
+            a, b = pts[i], pts[i + 1]
+            return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]
+          end
+          d -= len
+        end
+        return pts[-1]
       end
 
       def place(s, x, y, alpha, zoom)

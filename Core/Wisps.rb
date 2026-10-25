@@ -12,10 +12,16 @@
 #            time; then 300 steps before the next
 #   It shows a few tiles from you, on screen, with a soft chime (and with
 #            Kanto Reloaded a toast: "A strange light flickers nearby...")
-#   The trail  Toward a Hidden Spot: a quiet spot you can walk to, further on
-#            (3 to 5 hops). Come within 2 tiles and it fades out and fades in
-#            4 to 6 tiles further along (Fade and Reappear), always on screen.
-#            Lost if you walk well away, change map or night ends.
+#   The trail  Toward a Hidden Spot: a quiet spot you can walk to, further on,
+#            on your map or one connected to it (his ask 2026-10-25: across
+#            one connection; the end well in from its map's edges)
+#            (2 to 4 hops). Come within 4 tiles and it fades slowly away while
+#            its motes fly on along the trail, and fades in again 10 to 14
+#            tiles further along from you, on screen or not (his asks
+#            2026-10-25: much slower, further away; Lead the Way).
+#            Lost if you walk well away, leave its maps, the night ends, or
+#            it waits an in-game hour at a spot for you (his pick 2026-10-25:
+#            An Hour at Each Spot; map time only, battles and menus aside).
 #   Its end  55 Treasure / 30 Possessed Wild / 10 Possession / 5 Grave (a
 #            grave only with Restless Spirits, Core/Spirits.rb; an end that
 #            can't happen is a treasure instead). At the end it sinks into
@@ -48,13 +54,16 @@ module GhostlyPossession
     HAUNTED = 2                    # twice that in haunted places
     COOLDOWN = 300                 # quiet steps before the next
     MIN_AREA = 60                  # tiles you can walk to, or no wisp
-    BOX = 20                       # the search's reach each way (tiles)
-    FIRST = (3..4).freeze          # how far ahead it first shows
-    HOPS = (3..5).freeze           # hops to the end
-    HOP = (4..6).freeze            # tiles each hop (fewer when only that fits on screen)
-    NEAR = 2                       # come this close and it hops
-    LOST = 10                      # walk this far from it and it's lost
-    FADE = 12                      # frames to fade out, and back in
+    BOX = 32                       # the search's reach each way (tiles)
+    FIRST = (5..6).freeze          # how far ahead it first shows, on screen (nearer only when that's off it)
+    HOPS = (2..4).freeze           # hops to the end
+    HOP = (10..14).freeze          # tiles each hop, on screen or not (fewer only when the trail turns back)
+    NEAR = 4                       # come this close and it fades on ahead
+    LOST = 22                      # walk this far from it and it's lost
+    FADE_OUT = 60                  # frames to fade away, its motes flying on (his ask 2026-10-25: much slower; was 12)
+    FADE_IN = 16                   # frames to show again
+    END_EDGE = NEAR + 1            # the trail's end this far in from its map's edges (near it, you're on its map)
+    WAIT = 60 * 40                 # steps it waits at a spot for you: an in-game hour (KIF's clock runs 60x; 40 steps a second)
     SINK = 30                      # frames to sink into the ground at the end
     ENDS = [[:treasure, 55], [:wild, 30], [:possession, 10], [:grave, 5]].freeze
     # [item, how many, weight]: Ghostly Items most, Ghost Hunting Gear often,
@@ -125,11 +134,75 @@ module GhostlyPossession
     end
 
     #--------------------------------------------------------------------------
+    # The trail's maps (his ask 2026-10-25: across one connection): a trail
+    # is kept in its first map's tiles, and may step onto the maps connected
+    # to it; where you are and where it shows go through their offsets
+    #--------------------------------------------------------------------------
+    # [[map id, its top left in the first map's tiles], ...]: the first map,
+    # then each one connected to it (the game's own connections)
+    def frame(origin_id = ($game_map ? $game_map.map_id : 0))
+      list = [[origin_id, 0, 0]]
+      conns = defined?(::MapFactoryHelper) && ::MapFactoryHelper.respond_to?(:getMapConnections) ? ::MapFactoryHelper.getMapConnections[origin_id] : nil
+      Array(conns).each do |c|
+        other = c[0] == origin_id ? c[3] : c[0]
+        next if other == origin_id || list.any? { |id, _x, _y| id == other }
+        ox, oy = $MapFactory.getRelativePos(other, 0, 0, origin_id, 0, 0)   # (its top left, seen from the first map)
+        list << [other, ox, oy]
+      end
+      return list
+    rescue StandardError
+      return [[origin_id, 0, 0]]
+    end
+
+    # The trail's frame now (the one being searched before it starts)
+    def trail_frame
+      return @trail[:frame] if @trail && @trail[:frame]
+      return @frame ||= frame
+    end
+
+    # A map by id while the game has it loaded (a connected map is, within
+    # a screen and 6 tiles of you), else nil: a map is never read for the
+    # trail itself (setting one up runs the game's and other mods' map hooks)
+    def map_by_id(id)
+      return $game_map if $game_map && $game_map.map_id == id
+      maps = defined?($MapFactory) && $MapFactory && $MapFactory.respond_to?(:maps) ? $MapFactory.maps : nil
+      return Array(maps).compact.find { |m| m.map_id == id }
+    end
+
+    # A tile of the trail's frame: [map, x, y on it], or nil off every map
+    def tile_at(x, y, fr = trail_frame)
+      fr.each do |id, ox, oy|
+        m = map_by_id(id)
+        next unless m
+        lx, ly = x - ox, y - oy
+        return [m, lx, ly] if m.valid?(lx, ly)
+      end
+      return nil
+    end
+
+    # Where a map's top left is in the trail's frame, or nil if it isn't one of its maps
+    def offset_of(map_id, fr = trail_frame)
+      e = fr.find { |id, _x, _y| id == map_id }
+      return e ? [e[1], e[2]] : nil
+    end
+
+    def trail_map?(map_id)
+      return @trail && offset_of(map_id) ? true : false
+    end
+
+    # You in the trail's frame, or nil off its maps
+    def player_at
+      off = $game_map && $game_player ? offset_of($game_map.map_id) : nil
+      return off ? [$game_player.x + off[0], $game_player.y + off[1]] : nil
+    end
+
+    #--------------------------------------------------------------------------
     # The trail: a search from you, a hidden spot, the path to it
     #--------------------------------------------------------------------------
-    # Every tile you can walk to near you: [distance, came-from], by the
-    # player's own passability (ledges aren't followed)
-    def search(px, py)
+    # Every tile you can walk to near you, onto the maps next door too:
+    # [distance, came-from], by the player's own passability on your map
+    # (ledges aren't followed), by the tiles' and events' elsewhere
+    def search(px, py, fr = trail_frame)
       dist = { [px, py] => 0 }
       from = {}
       queue = [[px, py]]
@@ -139,7 +212,7 @@ module GhostlyPossession
           nx, ny = x + dx, y + dy
           next if dist.has_key?([nx, ny])
           next if (nx - px).abs > BOX || (ny - py).abs > BOX
-          next unless $game_map.valid?(nx, ny) && $game_player.passable?(x, y, d)
+          next unless step_ok?(x, y, d, fr)
           dist[[nx, ny]] = dist[[x, y]] + 1
           from[[nx, ny]] = [x, y]
           queue << [nx, ny]
@@ -148,74 +221,105 @@ module GhostlyPossession
       return [dist, from]
     end
 
+    # One step of the search: on your map as you'd walk it; across a map's
+    # edge or on the map next door by its tiles both ways and no event in the way
+    def step_ok?(x, y, d, fr = trail_frame)
+      _d, dx, dy = DIRS.find { |dd, _x, _y| dd == d }
+      a = tile_at(x, y, fr)
+      b = a && tile_at(x + dx, y + dy, fr)
+      return false unless a && b
+      return $game_player.passable?(a[1], a[2], d) if a[0].equal?($game_map) && b[0].equal?($game_map)
+      return false unless a[0].passable?(a[1], a[2], d) && b[0].passable?(b[1], b[2], 10 - d)
+      return b[0].events.values.none? { |e| e.x == b[1] && e.y == b[2] && !e.through && e.character_name.to_s != "" }
+    end
+
     def path_to(from, spot)
       path = [spot]
       path.unshift(from[path[0]]) while from[path[0]]
       return path
     end
 
-    # A tile the wisp may show over: not near the map's edge, no event, no
-    # follower, no ledge, ice, water, waterfall, current, bridge or counter
-    def spot_ok?(x, y)
-      map = $game_map
-      return false unless map.valid?(x, y)
-      return false if x < 1 || y < 1 || x > map.width - 2 || y > map.height - 2
-      return false if map.events.values.any? { |e| e.x == x && e.y == y && !e.instance_variable_get(:@erased) }
-      return false if $game_player.x == x && $game_player.y == y
+    # A tile the wisp may show over (the trail's frame): not near its map's
+    # edge, no event, not you, no follower, no ledge, ice, water, waterfall,
+    # current, bridge or counter
+    def spot_ok?(x, y, fr = trail_frame)
+      map, lx, ly = tile_at(x, y, fr)
+      return false unless map
+      return false if lx < 1 || ly < 1 || lx > map.width - 2 || ly > map.height - 2
+      return false if map.events.values.any? { |e| e.x == lx && e.y == ly && !e.instance_variable_get(:@erased) }
+      return false if [x, y] == player_at || (map.equal?($game_map) && $game_player.x == lx && $game_player.y == ly)
       followers = $PokemonTemp && $PokemonTemp.respond_to?(:dependentEvents) && $PokemonTemp.dependentEvents ? $PokemonTemp.dependentEvents : nil
-      return false if followers && followers.respond_to?(:realEvents) && followers.realEvents.any? { |e| e.x == x && e.y == y }
-      tag = map.terrain_tag(x, y)
+      if map.equal?($game_map) && followers && followers.respond_to?(:realEvents)
+        return false if followers.realEvents.any? { |e| e.x == lx && e.y == ly }
+      end
+      tag = map.terrain_tag(lx, ly)
       return false if tag && [:ledge, :ice, :can_surf, :waterfall, :waterfall_crest, :waterCurrent, :bridge].any? { |f| tag.respond_to?(f) && tag.send(f) }
-      return false if map.respond_to?(:counter?) && map.counter?(x, y)
+      return false if map.respond_to?(:counter?) && map.counter?(lx, ly)
       return true
     end
 
     # The trail's end: also open on all four sides (the ball there mustn't
-    # close a one-tile path), no event next to it, not in tall grass
-    def end_ok?(x, y)
-      return false unless spot_ok?(x, y)
-      map = $game_map
-      return false unless [2, 4, 6, 8].all? { |d| map.passable?(x, y, d) }
-      return false if map.events.values.any? { |e| (e.x - x).abs <= 1 && (e.y - y).abs <= 1 && !e.instance_variable_get(:@erased) }
-      return !(map.respond_to?(:bush?) && map.bush?(x, y))
+    # close a one-tile path), no event next to it, not in tall grass, and
+    # well in from its map's edges (coming near it, you're on its map: its
+    # ball, grave or battle is always on the map you're on)
+    def end_ok?(x, y, fr = trail_frame)
+      return false unless spot_ok?(x, y, fr)
+      map, lx, ly = tile_at(x, y, fr)
+      return false if lx < END_EDGE || ly < END_EDGE || lx > map.width - 1 - END_EDGE || ly > map.height - 1 - END_EDGE
+      return false unless [2, 4, 6, 8].all? { |d| map.passable?(lx, ly, d) }
+      return false if map.events.values.any? { |e| (e.x - lx).abs <= 1 && (e.y - ly).abs <= 1 && !e.instance_variable_get(:@erased) }
+      return !(map.respond_to?(:bush?) && map.bush?(lx, ly))
     end
 
-    # Where a tile is on screen: [x, the ground under it] (Game_Character's way)
+    # Where a tile of the map you're on is on screen: [x, the ground under
+    # it] (Game_Character's way)
     def screen_xy(x, y)
       m = $game_map
       return [((x * 128 - m.display_x) / 4.0).round + 16, ((y * 128 - m.display_y) / 4.0).round + 32]
     end
 
+    # ...a tile of the trail's frame (on the map next door, through its offset)
+    def trail_xy(x, y)
+      ox, oy = ($game_map ? offset_of($game_map.map_id) : nil) || [0, 0]
+      return screen_xy(x - ox, y - oy)
+    end
+
     # On screen with room for the wisp above it
     def on_screen?(x, y)
-      sx, sy = screen_xy(x, y)
+      sx, sy = trail_xy(x, y)
       return sx.between?(24, 488) && sy.between?(64, 380)
     end
 
     def start
       return false unless $game_map && $game_player
+      @frame = frame
       px, py = $game_player.x, $game_player.y
       dist, from = search(px, py)
       return false if dist.length < MIN_AREA
       hops = HOPS.min + rand(HOPS.max - HOPS.min + 1)
-      want = FIRST.min + hops * 5
+      want = FIRST.min + hops * ((HOP.min + HOP.max) / 2)
       spots = dist.select { |(x, y), d| (d - want).abs <= 3 && end_ok?(x, y) }.keys
       spots = dist.select { |(x, y), d| d >= 12 && end_ok?(x, y) }.keys if spots.empty?
       return false if spots.empty?
       spot = spots[rand(spots.length)]
       path = path_to(from, spot)
-      first = FIRST.to_a.reverse.find { |i| i < path.length - 1 && spot_ok?(*path[i]) && on_screen?(*path[i]) }
+      first = (FIRST.to_a.reverse + (3...FIRST.min).to_a.reverse).find do |i|
+        i < path.length - 1 && spot_ok?(*path[i]) && on_screen?(*path[i])
+      end
       return false unless first
       # (one from the Debug menu isn't lost by day)
-      @trail = { :map => $game_map.map_id, :path => path, :at => first, :phase => :in, :t => 0,
+      @trail = { :map => $game_map.map_id, :frame => @frame, :path => path, :at => first, :phase => :in, :t => 0,
                  :ending => @forced_end || ending, :anytime => @forced ? true : false }
       @forced_end = nil
       light_on
       WispLook.appear
-      GhostlyPossession.log("A will-o'-wisp appeared (#{@trail[:ending]}, #{path.length - 1} tiles to its end at #{spot.inspect})")
+      end_map = tile_at(*spot)[0].map_id
+      GhostlyPossession.log("A will-o'-wisp appeared (#{@trail[:ending]}, #{path.length - 1} tiles to its end at #{spot.inspect}" +
+                            (end_map == $game_map.map_id ? ")" : ", on the map next door, #{end_map})"))
       return true
     rescue StandardError => e
       @trail = nil
+      @frame = nil
       GhostlyPossession.log("A will-o'-wisp couldn't start: #{e.class}: #{e.message}")
       return false
     end
@@ -252,40 +356,46 @@ module GhostlyPossession
       run_pending if @pending
       t = @trail
       return unless t
-      unless $game_map && $game_map.map_id == t[:map]
-        stop("its map was left")
+      unless $game_map && trail_map?($game_map.map_id)
+        stop("its maps were left")
         return
       end
       x, y = t[:path][t[:at]]
       case t[:phase]
       when :in
         t[:t] += 1
-        t[:phase], t[:t] = :shown, 0 if t[:t] >= FADE
+        t[:phase], t[:t] = :shown, 0 if t[:t] >= FADE_IN
       when :shown
         return unless calm?
         if !t[:anytime] && Graphics.frame_count % 60 == 0 && !night?
           lose("night ended")
         elsif far?(x, y)
           lose("it was left behind")
+        elsif (t[:waited] = t[:waited].to_i + 1) >= WAIT
+          lose("it waited an hour")
         elsif near?(x, y)
           if t[:at] >= t[:path].length - 1
-            t[:phase], t[:t] = :sink, 0
-            WispLook.sink
+            # (its end is on the map you're on: it's well in from the edges)
+            if (end_tile = tile_at(x, y)) && end_tile[0].equal?($game_map)
+              t[:phase], t[:t] = :sink, 0
+              WispLook.sink
+            end
           else
             hop = next_hop
             if hop
-              t[:next], t[:phase], t[:t] = hop, :out, 0
+              t[:next], t[:phase], t[:t], t[:waited] = hop, :out, 0, 0
               WispLook.hop
             end
           end
         end
       when :out, :lost
         t[:t] += 1
-        return if t[:t] < (t[:phase] == :lost ? FADE * 2 : FADE)
+        return if t[:t] < (t[:phase] == :lost ? FADE_OUT * 2 : FADE_OUT)
         if t[:phase] == :lost
           clear
         else
-          t[:at], t[:phase], t[:t] = t[:next], :in, 0
+          # (picked again from where you are now: you walk on while it fades)
+          t[:at], t[:phase], t[:t] = next_hop || t[:next], :in, 0
         end
       when :sink
         t[:t] += 1
@@ -304,27 +414,44 @@ module GhostlyPossession
       return !(t.in_menu || t.in_battle || t.message_window_showing || t.player_transferring)
     end
 
+    # (you and it in the trail's frame: you may be on the map next door)
     def near?(x, y)
-      return (x - $game_player.x).abs + (y - $game_player.y).abs <= NEAR
+      px, py = player_at
+      return px ? (x - px).abs + (y - py).abs <= NEAR : false
     end
 
     def far?(x, y)
-      return (x - $game_player.x).abs + (y - $game_player.y).abs > LOST
+      px, py = player_at
+      return px ? (x - px).abs + (y - py).abs > LOST : true
     end
 
-    # The next spot along the path: 6, 5 or 4 tiles on (fewer only when
-    # nothing further fits on screen), the end itself when it's that close
+    # The next spot along the path, counted from it or from you if you're
+    # further along: 14 to 10 tiles on, on screen or not (its motes show
+    # the way; fewer only when no spot that far will do), the end itself
+    # when it's that close
     def next_hop
       t = @trail
       last = t[:path].length - 1
-      return last if last - t[:at] <= HOP.max && on_screen?(*t[:path][last])
-      tries = HOP.to_a.reverse + [3, 2]
+      from = [t[:at], player_index].max
+      return last if last - from <= HOP.max
+      tries = HOP.to_a.reverse + (2...HOP.min).to_a.reverse
       tries.each do |n|
-        i = t[:at] + n
+        i = from + n
         next if i >= last
-        return i if spot_ok?(*t[:path][i]) && on_screen?(*t[:path][i])
+        return i if spot_ok?(*t[:path][i])
       end
       return nil
+    end
+
+    # How far along the trail you are: its tile nearest you (the furthest of equals)
+    def player_index
+      px, py = player_at || [$game_player.x, $game_player.y]
+      best, near = 0, nil
+      @trail[:path].each_with_index do |(x, y), i|
+        d = (x - px).abs + (y - py).abs
+        best, near = i, d if near.nil? || d <= near
+      end
+      return best
     end
 
     def lose(why)
@@ -340,18 +467,22 @@ module GhostlyPossession
 
     def clear
       @trail = nil
+      @frame = nil
       self.steps = 0
       light_off
     end
 
     # The wisp as it shows now, for UI/WispLook.rb: [x, y, phase, frames
-    # into it, frames the phase takes], or nil
+    # into it, frames the phase takes, the trail's tiles to its next spot
+    # while it fades on (its motes fly them)], or nil; in the trail's frame
+    # (WispLook puts it on screen with trail_xy)
     def view
       t = @trail
       return nil unless t
       x, y = t[:path][t[:at]]
-      len = { :in => FADE, :out => FADE, :lost => FADE * 2, :sink => SINK }[t[:phase]] || 1
-      return [x, y, t[:phase], t[:t], len]
+      len = { :in => FADE_IN, :out => FADE_OUT, :lost => FADE_OUT * 2, :sink => SINK }[t[:phase]] || 1
+      ahead = t[:phase] == :out && t[:next] ? t[:path][t[:at]..t[:next]] : nil
+      return [x, y, t[:phase], t[:t], len, ahead]
     end
 
     def active?
@@ -363,10 +494,14 @@ module GhostlyPossession
     #--------------------------------------------------------------------------
     def finish
       t = @trail
-      x, y = t[:path].last
+      map, x, y = tile_at(*t[:path].last)
       kind = t[:ending]
       kind = :treasure unless possible?(kind)
       clear
+      unless map && map.equal?($game_map)
+        GhostlyPossession.log("The will-o'-wisp's trail ended off the map you're on: nothing there")
+        return
+      end
       GhostlyPossession.log("The will-o'-wisp's trail ended at (#{x}, #{y}): #{kind}")
       case kind
       when :treasure then place_ball(x, y)
@@ -635,7 +770,7 @@ module GhostlyPossession
       light(:wisp) do
         v = GhostlyPossession::Wisps.view
         if v
-          sx, sy = GhostlyPossession::Wisps.screen_xy(v[0], v[1])
+          sx, sy = GhostlyPossession::Wisps.trail_xy(v[0], v[1])
           [sx, sy - 30, 44]
         end
       end
@@ -706,8 +841,10 @@ module GhostlyPossession
           end
         }
         ::Events.onMapUpdate += proc { |_sender, _e| GhostlyPossession::Wisps.update }
+        # (walking onto a map its trail goes onto keeps it)
         ::Events.onMapChange += proc { |_sender, _e|
-          GhostlyPossession::Wisps.stop("its map was left") if GhostlyPossession::Wisps.active?
+          w = GhostlyPossession::Wisps
+          w.stop("its maps were left") if w.active? && !($game_map && w.trail_map?($game_map.map_id))
         } if ::Events.respond_to?(:onMapChange)
         ::Events.onMapSceneChange += proc { |_sender, _e|
           GhostlyPossession::Wisps.tidy

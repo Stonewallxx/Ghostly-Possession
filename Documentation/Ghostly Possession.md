@@ -122,7 +122,7 @@ Its wild Pokémon walk the routes, and grass steps there start no battles, so Ha
 
 - **At Spawn:** its route, cave and surf spawns roll as an encounter does (not its town wildlife or water, Poké Radar patches, alphas, or the disguised Ditto, Mew, Zorua and Zoroark).
 - **On the Map:** the battle's aura, Outline and Echo (the Aura setting picks both or one): purple silhouettes a pixel round it and a see-through double risen beside it.
-- **Flickers:** it roams as its kind, but now and then fades out and back in two or three tiles away, on its own kind of ground. Never while you're within two tiles, once it's noticed you, while a battle's gathering, or when it's about to fuse.
+- **Flickers:** it roams as its kind, but now and then fades slowly out, stays gone a moment, and fades back in two or three tiles away, on its own kind of ground. Never while you're within two tiles, once it's noticed you, while a battle's gathering, or when it's about to fuse.
 - **Alone Only:** its battle is always one on one: it never joins another's battle, and none join its battle. After any wild battle, the walking wilds wait a second before starting another.
 - **Fusing on the Map:** if one of two walking wilds that fuse has a Ghost inside, the new one keeps it (its move and slot fit the new host). Two possessed never fuse.
 
@@ -138,15 +138,15 @@ Its wild Pokémon walk the routes, and grass steps there start no battles, so Ha
 Any night, all year, with no setting, a will-o'-wisp may appear and lead you somewhere ([Wisps.rb](../Core/Wisps.rb), [WispLook.rb](../UI/WispLook.rb)).
 
 - **When:** on a quiet step at night, on routes, in caves and in haunted places, never on dark maps or where there's little room to walk. It's 1 in 5,000 steps, twice that in haunted places, one at a time, then 300 steps before the next. It takes the step, so no battle starts on it.
-- **The Wisp:** a soft light-purple flame with two tiny motes circling it, the far one passing under it, glowing (added light) and never night-tinted. It appears a few tiles ahead with a chime (`PRSFX- Confuse Ray`). With Kanto Reloaded, a toast: "A strange light flickers nearby..." with its flame.
-- **The Trail:** come within 2 tiles and it fades out and reappears 4 to 6 tiles further on, always on screen and on a spot you can walk to. It makes 3 to 5 hops, then sinks into the ground at the trail's end. Walk more than 10 tiles from it, change map or let the night end, and it's lost.
+- **The Wisp:** a soft light-purple flame with two tiny motes circling it, the far one passing under it, glowing (added light) and never night-tinted. It appears 5 or 6 tiles ahead with a chime (`PRSFX- Confuse Ray`). With Kanto Reloaded, a toast: "A strange light flickers nearby..." with its flame.
+- **The Trail:** come within 4 tiles and it fades slowly away, about a second and a half, while its two motes leave it and fly on along the trail, bigger and brighter with short tails, showing the way. It reappears 10 to 14 tiles further on from where you are, on a spot you can walk to, even off screen: follow its motes. Starting near your map's edge, its trail may lead you onto the map connected there (one connection, one the game has in view), and its end is always well in from that map's edges. It makes 2 to 4 hops, then sinks into the ground at the trail's end. Walk more than 22 tiles from it, leave its maps, let the night end, or leave it waiting an in-game hour at a spot (a real minute on the map, battles and menus aside), and it's lost.
 - **The Ends:**
   - **A Treasure (55%):** an item ball with the wisp's glow and motes. Mostly ghostly items (Spell Tag, Reaper Cloth, Dusk Stone, Spooky Plate), often ghost-hunting gear (a Cleanse Tag, 3 Dusk Balls), sometimes valuables (Nugget, Star Piece, Big Pearl), and now and then a rare find (Rare Candy, PP Up, very rarely an Ability Capsule). It's gone by morning, and it's lifted out of every save, then put back.
   - **A Possessed Wild (30%):** one of the map's own Pokémon with a Ghost inside, battled there. With Hoenn Overworld Encounters it appears there as a walker instead.
   - **A Possession (10%):** a Ghost possesses one of your team, when Team Possession is on and nobody is possessed.
   - **A Grave (5%):** a Nuzlocke grave (Restless Spirits, below).
   - An end that can't happen becomes a treasure.
-- **In Pitch Black:** the wisp and the trail's ball each light their own patch.
+- **With Light Patches:** the wisp and the trail's ball each light their own patch.
 - **Debug:** A Will-o'-Wisp on the Next Step, and A Will-o'-Wisp Ending In...
 
 ## Restless Spirits
@@ -156,7 +156,7 @@ In KIF's Nuzlocke, now and then a will-o'-wisp's trail ends at the grave of one 
 - **Whose:** a Pokémon that died in the run and is no longer with you (sent to KIF's Graveyard, or released), while the run hasn't ended. With "stays fainted", the body keeps its spirit, so no grave.
 - **How Often:** 1 in 20 wisp trails, only while one of the fallen is waiting.
 - **Where:** one that died on this map, or one joined to it, comes first. For a Gym or a building, the maps round its town count. Else any of the fallen.
-- **The Grave:** a small headstone with the treasure ball's glow and motes, waiting where the wisp sank until morning. In Pitch Black it lights its own patch.
+- **The Grave:** a small headstone with the treasure ball's glow and motes, waiting where the wisp sank until morning. With Light Patches it lights its own patch.
 - **Reading It:** A on the grave. With Kanto Reloaded, the Memorial Card: "Here Lies Sparky", its faded picture, its kind and level, where it fell, then Call Its Spirit or Pay Respects. B closes it and the grave keeps waiting. On its own, the game's message with its faded picture, then the same choice.
 - **One Chance:** once its spirit has risen, whatever happens, its grave never shows again.
 - **Pay Respects:** its spirit rises from the grave and drifts up into sparks: laid to rest, and it leaves a gift.
@@ -172,34 +172,38 @@ In KIF's Nuzlocke, now and then a will-o'-wisp's trail ends at the grave of one 
 
 With KIF 1.2's Living title, now and then one of the Pokémon walking KIF's world has a Ghost inside, drawn in the Outline and Echo look (the Aura setting picks both or one) ([TitleLook.rb](../UI/TitleLook.rb)). Walkers only, never one Kanto Reloaded made an Alpha, with or without Kanto Reloaded.
 
-## The Spooky Season
+## Nights
 
-Halloween in the game this year: Ghostly Possession is the one-off Halloween mod for now (Kanto Reloaded runs the seasons later). It's on with the Spooky Season setting.
+The nights' darkness and their lights, on their own: Darkness, Town Lights and Light Patches work with the Spooky Season On or Off.
 
 ### The Night
 
-With a Darkness, nights on outdoor maps turn violet and darker than KIF's own ([Season.rb](../Core/Season.rb)):
+With a Darkness, nights on outdoor maps turn violet and darker than KIF's own ([Season.rb](../Core/Season.rb)). Each is the lit night, Tone(-114, -166, -70, 120), with its own dark over it, taken off away from lights:
 
-| Darkness | The Night |
+| Darkness | Away From Lights |
 |---|---|
 | Off | KIF's own nights, untouched |
-| Deepest Violet (a new save's) | Tone(-114, -166, -70, 120) |
-| Midnight Violet | Tone(-150, -202, -106, 120): halfway from Deepest Violet to Pitch Black's dark |
-| Pitch Black | Deepest Violet, under a dark round you |
+| Deepest Violet (a new save's) | 30 off |
+| Midnight Violet | 48 off |
+| Pitch Black | 71 off (28% of white), with light round you |
 
 - **When:** KIF's own evening until 8 pm, halfway at 9 pm, the season's night from 10 pm to 3 am, halfway at 4 am, and KIF's morning from 5. The game blends minute by minute between hours (`PBDayNight.getToneInternal`).
-- **EBDX:** the battle backdrops take the same night (`BattleSceneRoom#daylightTint`). Pitch Black battles are Midnight Violet.
+- **EBDX:** the battle backdrops take each Darkness's shade as a plain tone (`BattleSceneRoom#daylightTint`). Pitch Black battles are Midnight Violet's.
 - **The Darkrai darkness** still wins: while it's on, nothing here changes. Caves keep their own darkness.
+
+### Light Patches
+
+With Light Patches On (a new save's), every light lifts the dark round it back to the lit night ([SeasonDark.rb](../UI/SeasonDark.rb)): the map's own lamps (its `OutdoorLight` and `Light` events), Town Lights' panes, doors and lamps, the lighthouses' beams, and anything that gives light: `Season.light(:wisp) { [screen_x, screen_y, radius] }`, and `Season.unlight(:wisp)`. Self gives you a light of your own instead, 96 px round you, and On + Self gives both. Off, Deepest Violet and Midnight Violet are their shade as one even tone, and Pitch Black, which always has the light round you, keeps only that.
+
+- **How:** a subtracting sprite over the scene, white where it's dark, with a soft black stamp at each light, at each Darkness's depth (`Season::DARK`; Pitch Black's `SeasonDark::DEPTH`). Each frame is one fill and a stamp per light.
+- **When:** it fades in from 9 pm and out at 4 am, with the night.
 
 ### Pitch Black
 
-The caves' darkness brought outdoors at night ([SeasonDark.rb](../UI/SeasonDark.rb)), with more room and drawn smooth:
+The caves' darkness brought outdoors at night, with more room and drawn smooth:
 
 - **Round You:** 96 px; after Flash or KIF's Lantern, 176 px, as in caves. While it's up it is the game's darkness sprite, so Flash and the Lantern work with the game's own code, and Flash may be used there. A Flash lasts until you leave the map, after battles too.
-- **Every Light:** the map's own lamps (its `OutdoorLight` and `Light` events) light their own patch, as does anything that gives light: `Season.light(:wisp) { [screen_x, screen_y, radius] }`, and `Season.unlight(:wisp)`.
-- **When:** it fades in from 9 pm and out at 4 am, with the night.
-- **How Dark:** not quite black: away from the lights you can still make out roofs, trees and paths in deep blue (28% of the dark taken off the scene, `SeasonDark::DEPTH`).
-- **How:** a subtracting sprite, white where it's dark, with a soft black stamp at each light. Each frame is one fill and a stamp per light.
+- **How Dark:** not quite black: away from the lights you can still make out roofs, trees and paths in deep blue.
 
 ### Town Lights
 
@@ -209,15 +213,20 @@ With Town Lights On and Darkness on Deepest Violet or darker, from 9 pm to 4:30 
 - **Which Buildings:** houses (their doors' windows too), Marts (their doors and the MART letters too), Saffron's blocks, Celadon's brownstones and Department Store, the Pokémon Centers (each pane a cool white, their sign unlit), the Gyms (their windows, glass tops and glass doors; the door's frame, handle and foot stay white), Goldenrod's office blocks and Radio Tower, Silph Co. (its glass doors too), the Pokémon Mansion, Johto's wooden houses and pagodas, Vermilion's port and orange houses, the Seagallop harbors and the Power Plant, the pink and teal houses, the S.S. Anne (its cabin windows, portholes, the curved band of its bridge's windows and its front window), Lavender's Pokémon Tower, and the lighthouses.
 - **The Pokémon Tower:** its eight bands of slits and the four windows at its base glow a ghostly green, and so does their light. The slits are high up, so they light only the tower's wall; the base windows light the ground in front too.
 - **The Lighthouses:** Olivine's Glitter Lighthouse, its twin on Cerulean Cape and Cianwood's lighthouse shine a bright, near-white beacon: their lantern's panes (Cianwood's dark gallery band) light up as brightly as a lamp's bulb, and a steady light spreads about four tiles round from the lantern. Cianwood's two portholes light their wall.
-- **The Torch Pillar:** Route 34's torch pillar burns at night: its flame in its own fire colours (not the gold bowl or the pillar), and a warm light about four tiles round it that flickers like fire. In Pitch Black its patch of light flickers with it. (Sinjoh Ruins' two aren't on an outdoor map, so they stay as they are.)
-- **The Beam:** a soft beam turns round each lantern, a full turn every 8 seconds, fading in from the lantern and out at its end. It leaves the panes: turning away it passes behind the roof, turning toward you it crosses in front of the tower. In Pitch Black it lifts the dark where it falls.
-- **Ground Light:** each window's and door's light on the ground: a soft oval at its foot that fans out as it fades, the way the glass faces (a Pokémon Center's curved glass to its side), on open ground only, never over a building. The panes light their wall a little. A window high on a tall building has no ground near it, so only its wall glows. The Pokémon Centers' light is cool and a little brighter.
+- **The Torch Pillar:** Route 34's torch pillar burns at night: its flame in its own fire colours (not the gold bowl or the pillar), and a warm light about four tiles round it that flickers like fire. With Light Patches its patch of light flickers with it. (Sinjoh Ruins' two aren't on an outdoor map, so they stay as they are.)
+- **The Beam:** a soft beam turns round each lantern, a full turn every 8 seconds, fading in from the lantern and out at its end. It leaves the panes: turning away it passes behind the roof, turning toward you it crosses in front of the tower. With Light Patches it lifts the dark where it falls.
+- **Ground Light:** each window's and door's light on the ground: a soft oval at its foot that fans out as it fades, the way the glass faces (a Pokémon Center's curved glass to its side), on open ground only, never over a building. The panes light their wall a little. A window high on a tall building has no ground near it, so only its wall glows. The Pokémon Centers' light is cool and brighter, and their upper band lights the building round it.
+- **Next Door:** a map connected to yours lights up as it comes into view: Viridian's arch and lamps from Route 1, a town's windows from the route outside it. Its patches lift the dark too, and KIF's own lamp glow is hidden there.
 - **No Stacking:** where lights overlap, the brightest shows, not their sum, and a lamp's light wins over the others under it.
 - **Lamps:** an area light about four tiles round each, for the map's light events and the lamps drawn in its tiles (a lantern arch, or a lamp two tiles wide, is one light). Each lamp's own head lights up: the orange lamps, Pewter's twin lanterns, the globe lamps and the lanterns of Olivine's and Celadon's arches. KIF's own lamp glow is hidden while it's on.
-- **In Pitch Black:** every lit pane lifts its own patch of the dark, sized by the pane (a porthole a small one, a big window or a glass top a bigger one), upper storeys too; so does every door and lamp, and each ground light where it falls.
-- **Where:** 87 outdoor maps (towns, and the routes with lamps or gatehouses), with 2,368 windows, 315 doors and 128 lamps.
+- **With Light Patches:** every lit pane lifts its own patch of the dark, sized by the pane (a porthole a small one, a big window or a glass top a bigger one), upper storeys too; so does every door and lamp, and each ground light where it falls.
+- **Where:** 87 outdoor maps (towns, and the routes with lamps or gatehouses), with 2,733 windows, 304 doors and 128 lamps.
 
-The lights come with the mod, worked out ahead of time, so the game only shows them: three pictures per map, the lit pixels (`Graphics/GhostlyPossession/TownLights/MapNNN.png`), the glow (`MapNNNg.png`, made at half size, shown at twice that and added over the scene) and Pitch Black's patches (`MapNNNh.png`, half size, laid into the dark in one go), in their own folder so no other mod's files can clash, and where each light and patch is (`Data/town_lights.json`).
+The lights come with the mod, worked out ahead of time, so the game only shows them: three pictures per map, the lit pixels (`Graphics/GhostlyPossession/TownLights/MapNNN.png`), the glow (`MapNNNg.png`, made at half size, shown at twice that and added over the scene) and the light patches (`MapNNNh.png`, half size, laid into the dark in one go), in their own folder so no other mod's files can clash, and where each light and patch is (`Data/town_lights.json`).
+
+## The Spooky Season
+
+Halloween in the game this year: Ghostly Possession is the one-off Halloween mod for now (Kanto Reloaded runs the seasons later). It's on with the Spooky Season setting.
 
 ### Fog, Music, a Hat and Night Ghosts
 
@@ -245,14 +254,15 @@ As KIF settings, so they survive the mod being removed and added again ([Setting
 | How Often | Normal / Often | Normal |
 | Restless Spirits | Off / On | On |
 | Aura | Both / Outline / Echo | Both |
-| Spooky Season | Off / On | On |
 | Darkness | Off / Deepest Violet / Midnight Violet / Pitch Black | Deepest Violet |
 | Town Lights | Off / On | On |
+| Light Patches | Off / Self / On / On + Self | On |
+| Spooky Season | Off / On | On |
 | Haunted Music | Off / On | On |
 
-- **On Its Own:** a Ghostly Possession heading in KIF Settings' Pokémon section, after Fusion, then a Spooky Season heading. Each How Often is hidden while its switch is Off, and Darkness, Town Lights and Haunted Music while Spooky Season is Off.
-- **With Kanto Reloaded:** a Ghostly Possession heading in the Kanto Reloaded section, with all ten. Kanto Reloaded reads and writes the same values, and each child row is locked until its switch is On.
-- **At Once:** changing Spooky Season or Darkness changes the night straight away.
+- **On Its Own:** a Ghostly Possession heading in KIF Settings' Pokémon section, after Fusion, then Nights and Spooky Season headings. Each How Often is hidden while its switch is Off, Town Lights and Light Patches while Darkness is Off, and Haunted Music while Spooky Season is Off.
+- **With Kanto Reloaded:** its own Ghostly Possession section in the Kanto Reloaded section, with Ghostly Possession, Nights and Spooky Season headers and all eleven rows. Kanto Reloaded reads and writes the same values, and each child row is locked until its switch is On.
+- **At Once:** changing Darkness or Light Patches changes the night straight away.
 
 ## The Numbers
 
@@ -273,17 +283,17 @@ The defaults; each is one constant in the file named.
 | The Leap | 50% | `WildBattle::LEAP_CHANCE` |
 | A freed host holds a Cleanse Tag | 10% | `WildBattle::TAG_CHANCE` |
 | The Cleanse Tag at Lavender's Mart | 1,000 | `CleanseTag::PRICE` ([CleanseTag.rb](../Core/CleanseTag.rb)) |
-| A walking wild flickers every | 5 to 10 seconds (never within 2 tiles of you; 2 or 3 tiles away) | `Compat::FLICKER_*` ([Compat.rb](../Core/Compat.rb)) |
+| A walking wild flickers every | 5 to 10 seconds (never within 2 tiles of you; 2 or 3 tiles away), fading out and in over 30 frames, gone 45 frames between | `Compat::FLICKER_*` ([Compat.rb](../Core/Compat.rb)) |
 | The walking wilds wait after a battle | a second | `Compat::HOLD` |
 | A will-o'-wisp appears | 1 in 5,000 quiet steps at night (×2 in haunted places), then 300 steps before the next | `Wisps::RATE`, `Wisps::HAUNTED`, `Wisps::COOLDOWN` ([Wisps.rb](../Core/Wisps.rb)) |
-| Its trail | 3 to 5 hops of 4 to 6 tiles; lost 10 tiles away | `Wisps::HOPS`, `Wisps::HOP`, `Wisps::LOST` |
+| Its trail | 2 to 4 hops of 10 to 14 tiles (on screen or not); fades away over 60 frames, in over 16; lost 22 tiles away, or after waiting an in-game hour (2,400 steps of map time) at a spot | `Wisps::HOPS`, `Wisps::HOP`, `Wisps::FADE_OUT`, `Wisps::FADE_IN`, `Wisps::LOST`, `Wisps::WAIT` |
 | A night encounter is a Ghost (Spooky Season) | 1 in 10, on routes and in caves | `SeasonExtras::GHOST_CHANCE` ([SeasonExtras.rb](../Core/SeasonExtras.rb)) |
 | The haunted places' fog | about 0.42 opacity, shaded (150, 140, 178) | `SeasonExtras::FOG_OPACITY`, `FOG_TONE`, `FOG_MAPS` |
 | Town Lights' hours | 9 pm to 4:30 am, fading in and out over 20 frames | `TownLights.hours_on?`, `TownLights::FADE` ([TownLights.rb](../UI/TownLights.rb)) |
 | A lamp's light | about four tiles round (128 px) | in the glow pictures |
-| A window's ground light / a door's | a soft oval at the foot fanning out over 46 / 50 px, 20 to 64 / 26 to 72 px wide, strength 0.21 / 0.26 (a Pokémon Center's 1.7 times) | in the glow pictures |
+| A window's ground light / a door's | a soft oval at the foot fanning out over 46 / 50 px, 20 to 64 / 26 to 72 px wide, strength 0.21 / 0.26 (a Pokémon Center's 2.6 times) | in the glow pictures |
 | How lit the fixtures are | panes 170/255 amber, bulbs 215/255 | in the lit pictures |
-| Its patches in Pitch Black | lamp 110, door 56, ground light 40 px, each lit pane by its size (12 to 90 px) | in the patches pictures |
+| Its light patches | lamp 110, door 56, ground light 40 px, each lit pane by its size (12 to 90 px) | in the patches pictures |
 | Its ends | Treasure 55 / Possessed Wild 30 / Possession 10 / Grave 5 | `Wisps::ENDS`; the treasure's items and weights in `Wisps::GHOSTLY`, `GEAR`, `VALUABLES`, `RARE` |
 | A restless spirit stays | 5 turns | `Spirits::TURNS` ([Spirits.rb](../Core/Spirits.rb)) |
 | Its gift's rare find | twice as likely | `Spirits::RARE` |
@@ -294,3 +304,4 @@ The defaults; each is one constant in the file named.
 - `Core/`: [KR.rb](../Core/KR.rb), [Note.rb](../Core/Note.rb), [Settings.rb](../Core/Settings.rb), [Engine.rb](../Core/Engine.rb), [Battle.rb](../Core/Battle.rb), [Control.rb](../Core/Control.rb), [Ghosts.rb](../Core/Ghosts.rb), [Team.rb](../Core/Team.rb), [Wilds.rb](../Core/Wilds.rb), [Leave.rb](../Core/Leave.rb), [WildBattle.rb](../Core/WildBattle.rb), [CleanseTag.rb](../Core/CleanseTag.rb), [Channeler.rb](../Core/Channeler.rb), [Compat.rb](../Core/Compat.rb) (other mods), [Season.rb](../Core/Season.rb) (the Spooky Season's night), [SeasonExtras.rb](../Core/SeasonExtras.rb) (its fog, music, hat and night Ghosts), [Debug.rb](../Core/Debug.rb), [Wisps.rb](../Core/Wisps.rb) (will-o'-wisp trails), [Spirits.rb](../Core/Spirits.rb) (Restless Spirits), [Fusing.rb](../Core/Fusing.rb) (no fusing or unfusing while possessed).
 - `UI/`: [Shapes.rb](../UI/Shapes.rb) (the arrow, chevron and plus), [Moment.rb](../UI/Moment.rb) (the chill on the map), [Alone.rb](../UI/Alone.rb) (the game's own windows), [Card.rb](../UI/Card.rb) (Kanto Reloaded's card), [Keep.rb](../UI/Keep.rb) (Keep Which?), [Possessed.rb](../UI/Possessed.rb) (what's said, in either look), [PartyLook.rb](../UI/PartyLook.rb) (the party screens), [PCLook.rb](../UI/PCLook.rb) (the PC), [SummaryLook.rb](../UI/SummaryLook.rb) (the Summary), [Info.rb](../UI/Info.rb) (the Possession command), [BattleLook.rb](../UI/BattleLook.rb) (the battle screen), [MapAura.rb](../UI/MapAura.rb) (a walking wild on the map), [ClerkHat.rb](../UI/ClerkHat.rb) (the Mart clerks' Witchy Hat), [WispLook.rb](../UI/WispLook.rb) (the wisp and its ball), [SpiritLook.rb](../UI/SpiritLook.rb) (the grave, the Memorial Card, the spirit), [SeasonDark.rb](../UI/SeasonDark.rb) (Pitch Black), [TownLights.rb](../UI/TownLights.rb) (the town lights), [Readout.rb](../UI/Readout.rb) (the Overworld Menu readout), [TitleLook.rb](../UI/TitleLook.rb) (KIF's Living title).
 - `Data/town_lights.json` and `Graphics/GhostlyPossession/TownLights/`: the town lights' spots and lit pictures.
+- `Documentation/Changelogs/`: each version's changelog ([v1.0.0.md](Changelogs/v1.0.0.md) and on), which Kanto Reloaded's What's New shows.
