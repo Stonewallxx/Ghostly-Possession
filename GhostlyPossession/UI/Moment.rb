@@ -18,7 +18,10 @@
 #   GhostlyPossession::Moment.cast_out(note) { the card }
 #
 # Nothing saved is touched (no screen tone or flash): it's all sprites on a
-# viewport of its own, over the map and under the game's messages.
+# viewport of its own, over the map and under the game's messages. With
+# KIF's Map Zoom on, the Ghost and the glow are drawn smaller with the map,
+# and its moves round the player shrink with it (the chill and the flash
+# are the screen's).
 #==============================================================================
 
 module GhostlyPossession
@@ -130,6 +133,7 @@ module GhostlyPossession
 
       def initialize(note)
         @note = note || {}
+        @k = GhostlyPossession.map_scale
         @viewport = Viewport.new(0, 0, Graphics.width, Graphics.height)
         @viewport.z = Z
         @chill = Sprite.new(@viewport)
@@ -138,6 +142,7 @@ module GhostlyPossession
         @glow = Sprite.new(@viewport)
         @glow.bitmap = Moment.glow_bitmap
         @glow.ox = @glow.oy = GLOW_RINGS[0][0]
+        @glow.zoom_x = @glow.zoom_y = @k
         @glow.z = 1
         @trail = Sprite.new(@viewport)
         @ghost = Sprite.new(@viewport)
@@ -161,9 +166,18 @@ module GhostlyPossession
         set(:chill => 0, :glow => 0, :ghost => nil)
       end
 
-      # Where the player's middle is on screen
+      # Where the player's middle is on screen (KIF zooms screen_x and
+      # screen_y itself)
       def player_xy
-        return [$game_player.screen_x, $game_player.screen_y - 24]
+        return [$game_player.screen_x, $game_player.screen_y - (24 * @k).round]
+      end
+
+      # A spot given as on a Normal-size map round the player's middle,
+      # nearer it with KIF's Map Zoom
+      def round_player(x, y)
+        return [x, y] if @k == 1.0
+        px, py = player_xy
+        return [px + (x - px) * @k, py + (y - py) * @k]
       end
 
       # Everything for one moment: :chill (0-255), :glow (0-255), :ghost
@@ -190,9 +204,10 @@ module GhostlyPossession
       # shrinking into the player
       def place(s, px, py, t, sink)
         ease = t * t * (3 - 2 * t)
-        s.x = (px + 56 * (1 - ease) + 6 * Math.sin(t * Math::PI * 3)).round
-        s.y = (py - 110 * (1 - ease) - 6).round
-        s.zoom_x = s.zoom_y = 1.0 - 0.7 * sink
+        x, y = round_player(px + 56 * (1 - ease) + 6 * Math.sin(t * Math::PI * 3), py - 110 * (1 - ease) - 6)
+        s.x = x.round
+        s.y = y.round
+        s.zoom_x = s.zoom_y = (1.0 - 0.7 * sink) * @k
         s.opacity = ((t < 0.2 ? t / 0.2 : 1.0) * 220 * (1 - sink)).round
       end
 
@@ -249,9 +264,10 @@ module GhostlyPossession
         @trail.visible = false
         return unless @ghost.bitmap
         @ghost.visible = true
+        x, y = round_player(x, y)
         @ghost.x = x.round
         @ghost.y = y.round
-        @ghost.zoom_x = @ghost.zoom_y = zoom
+        @ghost.zoom_x = @ghost.zoom_y = zoom * @k
         @ghost.opacity = opacity.round
         @ghost.src_rect.x = ((@frame / Moment.frames(10)) % 4) * @ghost.src_rect.width
       end

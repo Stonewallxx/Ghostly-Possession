@@ -103,8 +103,12 @@ module GhostlyPossession
         return if @plane.opacity <= 0
         @drift += FOG_DRIFT
         sub = defined?(::Game_Map::X_SUBPIXELS) ? ::Game_Map::X_SUBPIXELS : 4
-        @plane.ox = ($game_map.display_x / sub + @drift).round
-        @plane.oy = ($game_map.display_y / sub).round
+        # with KIF's Map Zoom it moves and shrinks with the map, as KIF's
+        # own fog does (MapZoom.rb's Spriteset_Map#update)
+        k = GhostlyPossession.map_scale
+        @plane.zoom_x = @plane.zoom_y = k
+        @plane.ox = (($game_map.display_x / sub + @drift) * k).round
+        @plane.oy = (($game_map.display_y / sub) * k).round
       rescue StandardError => e
         GhostlyPossession.log("The fog couldn't be drawn: #{e.class}: #{e.message}")
         dispose

@@ -17,7 +17,9 @@
 #
 # It's a subtracting sprite: white where it's dark (taking everything down to
 # black), with a soft black stamp at each light (taking nothing away there).
-# Each frame is one fill and a stamp per light.
+# Each frame is one fill and a stamp per light. With KIF's Map Zoom on (Far,
+# or Kanto Reloaded's Adaptive or Test (1.5x)) every light and patch is drawn
+# smaller with the map, round the same tiles as at Normal.
 #
 # With Light Patches on (his picks 2026-10-25: Off / Self / On / On + Self),
 # Deepest Violet and Midnight Violet are the same sprite at their own depth
@@ -125,12 +127,18 @@ module GhostlyPossession
     end
 
     # [[x, y, radius], ...] on the screen: you (Pitch Black, or Light Patches' Self), and with
-    # every light's patches the map's lamps and the rest
+    # every light's patches the map's lamps and the rest. With KIF's Map Zoom each covers the
+    # same tiles as at Normal (as KIF's own cave circle does): the characters' screen_x and
+    # screen_y are zoomed already, Season's lights are Normal-size
     def lights(radius)
-      list = Season.pitch_black? || Settings.self_patch? ? [[$game_player.screen_x, $game_player.screen_y - 16, radius]] : []
+      k = GhostlyPossession.map_scale
+      up = (16 * k).round
+      list = Season.pitch_black? || Settings.self_patch? ? [[$game_player.screen_x, $game_player.screen_y - up, (radius * k).round]] : []
       return list unless patches?
-      lamps.each { |ev| list << [ev.screen_x, ev.screen_y - 16, LAMP] }
-      return list + Season.lights
+      lamp = (LAMP * k).round
+      lamps.each { |ev| list << [ev.screen_x, ev.screen_y - up, lamp] }
+      return list + Season.lights if k == 1.0
+      return list + Season.lights.map { |x, y, r| [(x * k).floor, (y * k).floor, (r * k).round] }
     end
 
     def white
@@ -215,15 +223,17 @@ module GhostlyPossession
         b = @sprite.bitmap
         b.fill_rect(0, 0, b.width, b.height, SeasonDark.white)
         # the town's lights' patches, made ahead: a picture for each lit map
-        # (yours and the ones next to it), laid in
+        # (yours and the ones next to it), laid in (Normal-size: put where
+        # KIF's Map Zoom draws the map, floored as it places the tiles)
+        k = GhostlyPossession.map_scale
         tps = SeasonDark.patches? && defined?(TownLights) && TownLights.respond_to?(:dark_pictures) ? TownLights.dark_pictures : []
         tps.each do |pic, x, y, scale, opacity|
-          b.stretch_blt(Rect.new(x.round, y.round, (pic.width * scale).round, (pic.height * scale).round), pic, pic.rect, opacity.to_i)
+          b.stretch_blt(Rect.new((x * k).floor, (y * k).floor, (pic.width * scale * k).round, (pic.height * scale * k).round), pic, pic.rect, opacity.to_i)
         end
         # the lighthouses' beams, where they fall now
         if SeasonDark.patches? && defined?(TownLights) && TownLights.respond_to?(:dark_beams)
           TownLights.dark_beams.each do |pic, cell, x, y, scale, opacity|
-            b.stretch_blt(Rect.new(x.round, y.round, (cell.width * scale).round, (cell.height * scale).round), pic, cell, opacity.to_i)
+            b.stretch_blt(Rect.new((x * k).floor, (y * k).floor, (cell.width * scale * k).round, (cell.height * scale * k).round), pic, cell, opacity.to_i)
           end
         end
         st = SeasonDark.stamp

@@ -272,7 +272,8 @@ module GhostlyPossession
     end
 
     # Where a tile of the map you're on is on screen: [x, the ground under
-    # it] (Game_Character's way)
+    # it] (Game_Character's way), as on a Normal-size map (with KIF's Map
+    # Zoom, GhostlyPossession.map_scale times it)
     def screen_xy(x, y)
       m = $game_map
       return [((x * 128 - m.display_x) / 4.0).round + 16, ((y * 128 - m.display_y) / 4.0).round + 32]
@@ -284,10 +285,12 @@ module GhostlyPossession
       return screen_xy(x - ox, y - oy)
     end
 
-    # On screen with room for the wisp above it
+    # On screen with room for the wisp above it (zoomed out, the screen
+    # shows more of the map)
     def on_screen?(x, y)
       sx, sy = trail_xy(x, y)
-      return sx.between?(24, 488) && sy.between?(64, 380)
+      k = GhostlyPossession.map_scale
+      return sx.between?(24, 512 / k - 24) && sy.between?(64, 384 / k - 4)
     end
 
     def start

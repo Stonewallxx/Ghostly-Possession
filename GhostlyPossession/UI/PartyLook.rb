@@ -12,7 +12,9 @@
 #   ghost badge on the card; the details show the Ghost's picture and name,
 #   (and its Overworld Menu's Party View: the fusion's picture and types, the
 #   card lit ghost purple, the ghost mark by the level on a Full card),
-#   top right (no POSSESSED pill: his call, 2026-10-25).
+#   top right (no POSSESSED pill: his call, 2026-10-25). Critical EV Gain's
+#   EV Gains board and toast: the fusion's icon. The Trainer Card's
+#   Showcase: the fusion's icon and the ghost badge in the tile's corner.
 #==============================================================================
 
 module GhostlyPossession
@@ -278,6 +280,67 @@ module GhostlyPossession
       end
     end
 
+    #--------------------------------------------------------------------------
+    # With Kanto Reloaded: Critical EV Gain's EV Gains board and its toast
+    # (Reloaded::CriticalEVGainScreen): a possessed one's picture is the
+    # fusion's; its name stays its own
+    #--------------------------------------------------------------------------
+    module KREVGains
+      def look_of(pkmn)
+        return GhostlyPossession::PartyLook.look_of(pkmn) || super
+      end
+    end
+
+    # With Kanto Reloaded: its Trainer Card's Showcase (the fusion's icon,
+    # the ghost badge in the tile's corner, as the Reloaded PC's)
+    module KRTrainerCard
+      def icon_for(pk)
+        return GhostlyPossession::PartyLook.look_of(pk) || super
+      end
+
+      def showcase_tile(top, c, pk, x, y, w, h)
+        super
+        return unless GhostlyPossession::PartyLook.possessed?(pk)
+        ink = GhostlyPossession::PartyLook.ink(c)
+        mixed = ::Reloaded::Palette.mix(c[:light] ? c[:panel2] : c[:panel], ink, c[:light] ? 0.22 : 0.3)
+        bx = x + w - 18
+        ::Reloaded::Pixel.ui.rbox(top, bx, y + 3, bx + 15, y + 16, 4, mixed, ink)
+        ::Reloaded::PartyPaint.pixels(top, GLYPH, bx + 3, y + 5, ink)
+      rescue StandardError => e
+        GhostlyPossession.log("The Trainer Card's possessed badge couldn't be drawn: #{e.class}: #{e.message}")
+      end
+    end
+
+    # With Kanto Reloaded: its Battle Info (a possessed one's picture is the
+    # fusion's, on its tab and in the Turn Log; the ghost badge after its
+    # name on its tab, as on the Party Screen's cards)
+    module KRBattleInfo
+      def icon_for(pk)
+        return GhostlyPossession::PartyLook.look_of(pk) || super
+      end
+
+      def name_mark(top, c, pk, x, y)
+        w = super
+        return w unless GhostlyPossession::PartyLook.possessed?(pk)
+        ink = GhostlyPossession::PartyLook.ink(c)
+        mixed = ::Reloaded::Palette.mix(c[:light] ? c[:panel2] : c[:panel], ink, c[:light] ? 0.22 : 0.3)
+        ::Reloaded::Pixel.ui.rbox(top, x + w, y + 3, x + w + 15, y + 16, 4, mixed, ink)
+        ::Reloaded::PartyPaint.pixels(top, GLYPH, x + w + 3, y + 5, ink)
+        return w + 19
+      rescue StandardError => e
+        GhostlyPossession.log("Battle Info's possessed badge couldn't be drawn: #{e.class}: #{e.message}")
+        return 0
+      end
+    end
+
+    # With Kanto Reloaded: its Battle Scene's target window (a possessed
+    # one's picture is the fusion's when you pick a target, as in Battle Info)
+    module KRTargetIcons
+      def icon_for(pk)
+        return GhostlyPossession::PartyLook.look_of(pk) || super
+      end
+    end
+
     def possessed?(pkmn)
       return pkmn && !(pkmn.egg? rescue true) && Note.possessed?(pkmn) ? true : false
     end
@@ -331,6 +394,34 @@ module GhostlyPossession
           ::Reloaded::OverworldMenuScreen.prepend(KROverworldCards)
         else
           GhostlyPossession.log("Kanto Reloaded's Overworld Menu has changed: Party View doesn't show the possessed look")
+        end
+      end
+      if KR.on? && defined?(::Reloaded::CriticalEVGainScreen) && !::Reloaded::CriticalEVGainScreen.singleton_class.ancestors.include?(KREVGains)
+        if ::Reloaded::CriticalEVGainScreen.respond_to?(:look_of)
+          ::Reloaded::CriticalEVGainScreen.singleton_class.prepend(KREVGains)
+        else
+          GhostlyPossession.log("Kanto Reloaded's EV Gains board has changed: it doesn't show the possessed look")
+        end
+      end
+      if KR.on? && defined?(::Reloaded::TrainerCardScene) && !::Reloaded::TrainerCardScene.ancestors.include?(KRTrainerCard)
+        if [:icon_for, :showcase_tile].all? { |m| ::Reloaded::TrainerCardScene.method_defined?(m) || ::Reloaded::TrainerCardScene.private_method_defined?(m) }
+          ::Reloaded::TrainerCardScene.prepend(KRTrainerCard)
+        else
+          GhostlyPossession.log("Kanto Reloaded's Trainer Card has changed: its Showcase doesn't show the possessed look")
+        end
+      end
+      if KR.on? && defined?(::Reloaded::BattleInfoScreen) && !::Reloaded::BattleInfoScreen.ancestors.include?(KRBattleInfo)
+        if [:icon_for, :name_mark].all? { |m| ::Reloaded::BattleInfoScreen.method_defined?(m) || ::Reloaded::BattleInfoScreen.private_method_defined?(m) }
+          ::Reloaded::BattleInfoScreen.prepend(KRBattleInfo)
+        else
+          GhostlyPossession.log("Kanto Reloaded's Battle Info has changed: it doesn't show the possessed look")
+        end
+      end
+      if KR.on? && defined?(::Reloaded::BattleScene::TargetIcons) && !::Reloaded::BattleScene::TargetIcons.ancestors.include?(KRTargetIcons)
+        if ::Reloaded::BattleScene::TargetIcons.method_defined?(:icon_for)
+          ::Reloaded::BattleScene::TargetIcons.prepend(KRTargetIcons)
+        else
+          GhostlyPossession.log("Kanto Reloaded's Battle Scene has changed: its target window doesn't show the possessed look")
         end
       end
       return true

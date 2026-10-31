@@ -123,6 +123,25 @@ module GhostlyPossession
         end
       end
 
+      # Every frame: the Ghost goes and comes back with the big picture (KIF:
+      # Elite Redux's ability details hide the picture, and its own popup was
+      # under the Ghost, his test 2026-10-26)
+      def pbUpdate(*args)
+        ret = defined?(super) ? super : nil
+        ghost = @sprites && @sprites["gp_ghost"]
+        return ret unless ghost && !ghost.disposed?
+        pic = @sprites["pokemon"]
+        shown = pic && !pic.disposed? && pic.visible
+        if !shown && ghost.visible
+          ghost.visible = false
+          @gp_ghost_hid = true
+        elsif shown && @gp_ghost_hid
+          ghost.visible = !ghost.bitmap.nil?
+          @gp_ghost_hid = nil
+        end
+        return ret
+      end
+
       def gp_view
         return nil unless @pokemon && GhostlyPossession::PartyLook.possessed?(@pokemon)
         return GhostlyPossession::Engine.battle_view(@pokemon)

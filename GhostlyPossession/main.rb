@@ -43,6 +43,20 @@ module GhostlyPossession
     GhostlyPossession::KR.trail("#{NAME}: #{message}") if defined?(GhostlyPossession::KR)
   end
 
+  # KIF's Map Zoom (990_KIF/ZZ_Cody/C-UI-01_MapZoom): how much smaller the
+  # map is drawn, 1.0 at Normal, 0.5 at Far (and Kanto Reloaded's Adaptive
+  # outdoors), 0.75 at Kanto Reloaded's Test (1.5x). A spot on a Normal-size
+  # map (from the camera's corner) is that many times as far from the
+  # screen's corner; KIF zooms the characters' sprites and screen_x/screen_y
+  # itself. Everything this mod draws on the map follows it.
+  def self.map_scale
+    return 1.0 unless defined?(::KIF::MapZoom) && ::KIF::MapZoom.respond_to?(:scale)
+    s = ::KIF::MapZoom.scale.to_f
+    return s > 0 ? s : 1.0
+  rescue StandardError
+    return 1.0
+  end
+
   # What didn't load or boot this session.
   def self.failures
     return Array(@failures).dup

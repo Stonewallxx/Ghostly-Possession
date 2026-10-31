@@ -169,22 +169,28 @@ module GhostlyPossession
       looks = grave_make(s) if !looks || looks.any?(&:disposed?)
       stone, pool, halo, *motes = looks
       shown = !s.disposed? && s.visible
+      # (its event's sprite is zoomed and placed by KIF's Map Zoom: the
+      # stone, its glow and their offsets shrink with it)
+      k = GhostlyPossession.map_scale
       stone.x, stone.y, stone.z = s.x, s.y, s.z
+      stone.zoom_x = stone.zoom_y = k
       stone.visible = shown
       stone.opacity = s.opacity
       stone.tone = s.tone.clone if s.tone       # night-tinted as the map's sprites
-      cy = s.y - 16
+      cy = s.y - (16 * k).round
       frame = Graphics.frame_count
       [pool, halo].each { |g| g.visible = shown; g.opacity = s.opacity }
-      pool.x, pool.y, pool.z = s.x, s.y - 4, s.z - 1
+      pool.x, pool.y, pool.z = s.x, s.y - (4 * k).round, s.z - 1
+      pool.zoom_x = pool.zoom_y = k
       halo.x, halo.y, halo.z = s.x, cy, s.z - 1
-      halo.zoom_x = halo.zoom_y = (frame / 8).even? ? 1.0 : 1.06
+      halo.zoom_x = halo.zoom_y = ((frame / 8).even? ? 1.0 : 1.06) * k
       motes.each_slice(2).each_with_index do |(glow, dot), n|
         ang = frame * 0.05 + Math::PI / 4 + n * Math::PI
-        mx = s.x + (Math.cos(ang) * 17).round
-        my = cy + (Math.sin(ang) * 6).round
+        mx = s.x + (Math.cos(ang) * 17 * k).round
+        my = cy + (Math.sin(ang) * 6 * k).round
         [glow, dot].each do |m|
           m.x, m.y = mx, my
+          m.zoom_x = m.zoom_y = k
           m.z = Math.sin(ang) < 0 ? s.z - 1 : s.z + 1
           m.visible = shown
           m.opacity = s.opacity
@@ -467,6 +473,7 @@ module GhostlyPossession
       def initialize(f, g)
         @f = f
         @g = g
+        @k = GhostlyPossession.map_scale
         @ev = Spirits.grave_event
         host = SpiritLook.grave_sprite(@ev)
         @own = Viewport.new(0, 0, Graphics.width, Graphics.height)
@@ -514,6 +521,14 @@ module GhostlyPossession
         return Wisps.screen_xy(@g[:x], @g[:y])
       end
 
+      # x, y on a Normal-size map: with KIF's Map Zoom, drawn smaller with
+      # the map (floored, as it places the tiles); dx, dy screen pixels on
+      def put(s, x, y, zoom = 1.0, dx = 0, dy = 0)
+        s.x = (@k == 1.0 ? x : (x * @k).floor) + dx
+        s.y = (@k == 1.0 ? y : (y * @k).floor) + dy
+        s.zoom_x = s.zoom_y = zoom * @k
+      end
+
       # [its picture's first row, the row after its last] in its frame (the
       # empty rows above and under it don't count as it comes up)
       def rows_drawn
@@ -533,11 +548,12 @@ module GhostlyPossession
         sx, = ground
         h = (@top + (@bottom - @top) * shown).round
         col = (@frame / SpiritLook.frames(10)) % @cols
-        cut = proc do |s, x, yy|
+        # (the outline a screen pixel round it at any Map Zoom)
+        cut = proc do |s, x, yy, zoom = 1.0, dx = 0, dy = 0|
           s.src_rect.set(col * @fw, @row * @fh, @fw, h)
           s.ox = @fw / 2
           s.oy = h
-          s.x, s.y = x, yy
+          put(s, x, yy, zoom, dx, dy)
         end
         cut.call(@body, sx, y)
         @body.opacity = (CAP * o).round
@@ -545,14 +561,13 @@ module GhostlyPossession
         @lilac.opacity = (CAP * o * LILAC_SHARE).round
         aura = o * o
         @outline.each_with_index do |s, i|
-          cut.call(s, sx + OUTLINE[i][0], y + OUTLINE[i][1])
+          cut.call(s, sx, y, 1.0, OUTLINE[i][0], OUTLINE[i][1])
           s.opacity = (210 * aura * (0.75 + 0.25 * Math.sin(@frame * 0.08))).round
         end
-        cut.call(@echo, sx + 5 + (2 * Math.sin(@frame * 0.05)).round, y - 10 - (Math.sin(@frame * 0.07)).round)
-        @echo.zoom_x = @echo.zoom_y = 1.05
+        cut.call(@echo, sx + 5 + (2 * Math.sin(@frame * 0.05)).round, y - 10 - (Math.sin(@frame * 0.07)).round, 1.05)
         @echo.opacity = (95 * aura).round
         ([@body, @lilac, @echo] + @outline).each { |s| s.visible = h > 0 && o > 0 }
-        @glow.x, @glow.y = sx, y - h / 2
+        put(@glow, sx, y - h / 2)
         @glow.opacity = (200 * o).round
         @glow.visible = o > 0
       end
@@ -612,8 +627,7 @@ module GhostlyPossession
           k = (i + 1).to_f / n
           show(y - (40 * k).round, 1.0, 1 - k)
           @sparks.each_with_index do |s, j|
-            s.x = sx + [-12, 10, -4, 8][j] + (3 * Math.sin(@frame * 0.1 + j)).round
-            s.y = y - 24 - (60 * k * (0.6 + 0.15 * j)).round
+            put(s, sx + [-12, 10, -4, 8][j] + (3 * Math.sin(@frame * 0.1 + j)).round, y - 24 - (60 * k * (0.6 + 0.15 * j)).round)
             s.opacity = (255 * (1 - k * k)).round
             s.visible = true
           end

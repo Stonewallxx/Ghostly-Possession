@@ -23,7 +23,8 @@
 # The Darkrai darkness still wins: while it's on, nothing here changes.
 #
 # Lights in the dark: anything that gives light says where, for the light
-# patches (one light, or a list of them).
+# patches (one light, or a list of them), as on a Normal-size map (from the
+# camera's corner): the dark puts it where KIF's Map Zoom draws the map.
 #   GhostlyPossession::Season.light(:wisp) { [screen_x, screen_y, radius] }
 #   GhostlyPossession::Season.unlight(:wisp)
 #==============================================================================

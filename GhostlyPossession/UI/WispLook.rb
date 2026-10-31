@@ -26,7 +26,8 @@
 # Drawn with the map's viewport (it scrolls with the map: Wisps.trail_xy, on
 # the map next door too)
 # as one of its spriteset's user sprites, attached again whenever the map's
-# sprites are made again (battles, transfers, a load).
+# sprites are made again (battles, transfers, a load). With KIF's Map Zoom
+# on, the wisp and the ball's glow are drawn smaller with the map.
 #==============================================================================
 
 module GhostlyPossession
@@ -212,6 +213,7 @@ module GhostlyPossession
           return
         end
         x, y, phase, t, len, ahead = v
+        @k = GhostlyPossession.map_scale
         p = [t.to_f / [len, 1].max, 1.0].min
         o, k, lift, spread = 1.0, 1.0, LIFT, 1.0
         case phase
@@ -286,10 +288,13 @@ module GhostlyPossession
         return pts[-1]
       end
 
+      # x, y on a Normal-size map: with KIF's Map Zoom, drawn smaller with
+      # the map (floored, as it places the tiles)
       def place(s, x, y, alpha, zoom)
-        s.x = x.round
-        s.y = y.round
-        s.zoom_x = s.zoom_y = zoom
+        k = @k || 1.0
+        s.x = k == 1.0 ? x.round : (x * k).floor
+        s.y = k == 1.0 ? y.round : (y * k).floor
+        s.zoom_x = s.zoom_y = zoom * k
         s.opacity = alpha
         s.visible = alpha > 0
       end
@@ -319,18 +324,23 @@ module GhostlyPossession
       looks = ball_make(s) if !looks || looks.any?(&:disposed?)
       pool, halo, *motes = looks
       shown = !s.disposed? && s.visible && s.opacity > 0
-      cy = s.y - 11
+      # (the ball's own sprite is zoomed and placed by KIF's Map Zoom: the
+      # glow's offsets and size shrink with it)
+      k = GhostlyPossession.map_scale
+      cy = s.y - (11 * k).round
       frame = Graphics.frame_count
       [pool, halo].each { |g| g.visible = shown; g.opacity = s.opacity }
-      pool.x, pool.y, pool.z = s.x, s.y - 2, s.z - 1
+      pool.x, pool.y, pool.z = s.x, s.y - (2 * k).round, s.z - 1
+      pool.zoom_x = pool.zoom_y = k
       halo.x, halo.y, halo.z = s.x, cy, s.z - 1
-      halo.zoom_x = halo.zoom_y = (frame / 8).even? ? 1.0 : 1.06
+      halo.zoom_x = halo.zoom_y = ((frame / 8).even? ? 1.0 : 1.06) * k
       motes.each_slice(2).each_with_index do |(glow, dot), n|
         ang = frame * 0.05 + Math::PI / 4 + n * Math::PI
-        mx = s.x + (Math.cos(ang) * 14).round
-        my = cy - 4 + (Math.sin(ang) * 5).round
+        mx = s.x + (Math.cos(ang) * 14 * k).round
+        my = cy - (4 * k).round + (Math.sin(ang) * 5 * k).round
         [glow, dot].each do |m|
           m.x, m.y = mx, my
+          m.zoom_x = m.zoom_y = k
           m.z = Math.sin(ang) < 0 ? s.z - 1 : s.z + 1
           m.visible = shown
           m.opacity = s.opacity

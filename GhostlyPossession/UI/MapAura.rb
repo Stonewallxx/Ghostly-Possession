@@ -10,7 +10,9 @@
 #
 # Drawn by its Sprite_Character, copying its frame, place, grass cut and
 # fade every update; the sprites belong to the Sprite_Character (never
-# saved, gone with it), under Hoenn's red alpha outline.
+# saved, gone with it), under Hoenn's red alpha outline. With KIF's Map Zoom
+# on it copies the sprite's smaller size too, and the echo rises and sways
+# less with it; the outline stays a screen pixel round it.
 #==============================================================================
 
 module GhostlyPossession
@@ -42,6 +44,7 @@ module GhostlyPossession
       style = Settings.aura                  # 0 Both, 1 Outline, 2 Echo
       shown = !s.disposed? && s.bitmap && s.visible && s.opacity > 0 ? true : false
       t = Graphics.frame_count
+      k = GhostlyPossession.map_scale
       pulse = 0.8 + 0.2 * Math.sin(t * 0.08)
       aura.each_with_index do |sp, i|
         copy(s, sp)
@@ -54,8 +57,8 @@ module GhostlyPossession
         else
           sp.zoom_x = s.zoom_x * ECHO_ZOOM
           sp.zoom_y = s.zoom_y * ECHO_ZOOM
-          sp.x = s.x + ECHO[0] + (SWAY * Math.sin(t * 0.05)).round
-          sp.y = s.y + ECHO[1]
+          sp.x = s.x + (ECHO[0] * k).round + (SWAY * k * Math.sin(t * 0.05)).round
+          sp.y = s.y + (ECHO[1] * k).round
           sp.z = s.z - 3
           sp.opacity = (s.opacity * ECHO_OPACITY / 255.0).round
           sp.visible = shown && style != 1

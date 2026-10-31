@@ -61,10 +61,14 @@ Its party menu has **Possession** ([Info.rb](../UI/Info.rb)): which Ghost is ins
 - **With Kanto Reloaded:** a command in its Party Screen's menu, then a popup: the Ghost on a purple disc, WILL, STAY, ITS MOVE, and what happens when it leaves.
 - **Cast It Out:** with Kanto Reloaded, a button in the popup ("Uses 1 Cleanse Tag (you have 2)" in green, red with none); on its own, "Use a Cleanse Tag to cast it out? You have 2." Yes or No. Then the party screen and the menu close themselves and it happens on the map.
 
-## With Kanto Reloaded: the Overworld Menu and Bug Reports
+## With Kanto Reloaded: the Overworld Menu, EV Gains, the Trainer Card, Battle Info, Battle Scene and Bug Reports
 
 - **The Possession Readout:** a readout for Kanto Reloaded's Overworld Menu ([Readout.rb](../UI/Readout.rb)): the possessed teammate's name, and a purple pill with its Ghost and roughly how long it'll stay ("GASTLY: A WHILE"; Not Long / A While / Settling In, as the Stay hint). Shown only while one of your team is possessed. Like every readout it starts on no page: put it on one with Edit Pages. A shows the Possession popup over the menu (with its own hints); Cast It Out closes the menu and it happens on the map.
 - **Party View:** in the Overworld Menu's Party View, a possessed one's card shows as on the Party Screen ([PartyLook.rb](../UI/PartyLook.rb)): the fusion's picture (Full: its battle sprite; Compact: its icon), Ghost-first types, the card lit ghost purple (its fill and edge) with the Party Screen's dashed purple outline inside (on a Compact card, close to its edge, clear of the name and under the HP bar), and on a Full card the ghost mark by its level. Its name stays its own.
+- **EV Gains:** Kanto Reloaded's EV Gains board and toast after a battle (Critical EV Gain) show a possessed one as the fusion's icon ([PartyLook.rb](../UI/PartyLook.rb)). Its name stays its own.
+- **The Trainer Card:** in Kanto Reloaded's Trainer Card, a possessed one in the Showcase shows as the fusion's icon, with the ghost badge in its tile's top right, as in the Reloaded PC ([PartyLook.rb](../UI/PartyLook.rb)).
+- **Battle Info:** in the Battle Menu's Battle Info, a possessed one shows as the fusion's icon on its tab and in the Turn Log, with the ghost badge after its name on its tab ([PartyLook.rb](../UI/PartyLook.rb)).
+- **Battle Scene:** when you pick a target in an EBDX battle, a possessed one's button shows the fusion's icon, as Battle Info does ([PartyLook.rb](../UI/PartyLook.rb)).
 - **Recent Steps:** every line of this mod's log (possessions, Ghosts leaving or cast out, wild ones with a Ghost inside, Keep Which?, the Leap, anything that failed) is also a note in Kanto Reloaded's Bug Report Recent Steps (a line the same as the last isn't noted again).
 
 ## Leaving and Casting Out
@@ -193,10 +197,11 @@ With a Darkness, nights on outdoor maps turn violet and darker than KIF's own ([
 
 ### Light Patches
 
-With Light Patches On (a new save's), every light lifts the dark round it back to the lit night ([SeasonDark.rb](../UI/SeasonDark.rb)): the map's own lamps (its `OutdoorLight` and `Light` events), Town Lights' panes, doors and lamps, the lighthouses' beams, and anything that gives light: `Season.light(:wisp) { [screen_x, screen_y, radius] }`, and `Season.unlight(:wisp)`. Self gives you a light of your own instead, 96 px round you, and On + Self gives both. Off, Deepest Violet and Midnight Violet are their shade as one even tone, and Pitch Black, which always has the light round you, keeps only that.
+With Light Patches On (a new save's), every light lifts the dark round it back to the lit night ([SeasonDark.rb](../UI/SeasonDark.rb)): the map's own lamps (its `OutdoorLight` and `Light` events), Town Lights' panes, doors and lamps, the lighthouses' beams, and anything that gives light: `Season.light(:wisp) { [screen_x, screen_y, radius] }`, its spot as on a Normal-size map (from the camera's corner), and `Season.unlight(:wisp)`. Self gives you a light of your own instead, 96 px round you, and On + Self gives both. Off, Deepest Violet and Midnight Violet are their shade as one even tone, and Pitch Black, which always has the light round you, keeps only that.
 
 - **How:** a subtracting sprite over the scene, white where it's dark, with a soft black stamp at each light, at each Darkness's depth (`Season::DARK`; Pitch Black's `SeasonDark::DEPTH`). Each frame is one fill and a stamp per light.
 - **When:** it fades in from 9 pm and out at 4 am, with the night.
+- **Map Zoom:** with KIF's Map Zoom on Far, or Kanto Reloaded's Adaptive or Test (1.5x), every light and patch is drawn smaller with the map, round the same tiles as at Normal (`GhostlyPossession.map_scale`).
 
 ### Pitch Black
 
@@ -220,7 +225,8 @@ With Town Lights On and Darkness on Deepest Violet or darker, from 9 pm to 4:30 
 - **No Stacking:** where lights overlap, the brightest shows, not their sum, and a lamp's light wins over the others under it.
 - **Lamps:** an area light about four tiles round each, for the map's light events and the lamps drawn in its tiles (a lantern arch, or a lamp two tiles wide, is one light). Each lamp's own head lights up: the orange lamps, Pewter's twin lanterns, the globe lamps and the lanterns of Olivine's and Celadon's arches. KIF's own lamp glow is hidden while it's on.
 - **With Light Patches:** every lit pane lifts its own patch of the dark, sized by the pane (a porthole a small one, a big window or a glass top a bigger one), upper storeys too; so does every door and lamp, and each ground light where it falls.
-- **Where:** 87 outdoor maps (towns, and the routes with lamps or gatehouses), with 2,733 windows, 304 doors and 128 lamps.
+- **Map Zoom:** with KIF's Map Zoom on, the lights are drawn smaller with the map, on their own windows, doors and lamps, and the lamp heads' light still sits over its tiles.
+- **Where:** 87 outdoor maps (towns, and the routes with lamps or gatehouses), with 2,794 windows, 304 doors and 128 lamps.
 
 The lights come with the mod, worked out ahead of time, so the game only shows them: three pictures per map, the lit pixels (`Graphics/GhostlyPossession/TownLights/MapNNN.png`), the glow (`MapNNNg.png`, made at half size, shown at twice that and added over the scene) and the light patches (`MapNNNh.png`, half size, laid into the dark in one go), in their own folder so no other mod's files can clash, and where each light and patch is (`Data/town_lights.json`).
 
@@ -241,6 +247,10 @@ All with Spooky Season On ([SeasonExtras.rb](../Core/SeasonExtras.rb)):
 ### Debug
 
 Ghostly Possession's Debug menu has Night Now (11 pm), Evening Now (8 pm) and Morning Now (7 am). They move the game's clock (`UnrealTime.advance_to`) and update the map at once.
+
+## With KIF's Map Zoom
+
+With KIF's Map Zoom on Far, or Kanto Reloaded's Adaptive or Test (1.5x), everything this mod draws on the map is drawn smaller with the map, in its own place (`GhostlyPossession.map_scale` in [main.rb](../main.rb) reads KIF's zoom): the Town Lights, Pitch Black and the Light Patches, the will-o'-wisps and their treasure's glow, graves and their spirits, the haunted fog, a possessed walking wild's aura and the possession moment. Outlines stay a screen pixel round what they outline, and the moment's chill and the flashes still cover the whole screen.
 
 ## Settings
 

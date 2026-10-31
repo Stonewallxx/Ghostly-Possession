@@ -51,6 +51,10 @@
 #                  map with lights, on that map's own sprites and scroll; a
 #                  map coming back into view gets its sprites made quietly
 #                  (Scene_Map#updateSpritesets), so each frame checks.
+#   Map Zoom       With KIF's Map Zoom on (Far, or Kanto Reloaded's Adaptive
+#                  or Test (1.5x)) every picture is drawn smaller with the
+#                  map, on its own tiles (placed as KIF places them), the
+#                  over-tile strips at their tiles' zoomed z.
 #
 # Every picture and spot is made ahead of time by Tools/TownLights
 # (Data/town_lights.json, Graphics/GhostlyPossession/TownLights); the game
@@ -147,16 +151,27 @@ module GhostlyPossession
     # The z the game's tiles of a map row and priority have now (the
     # TilemapRenderer's refresh_tile_z: its grid starts at the screen's top
     # row; a map next to yours scrolls by whole tiles from it, so its own
-    # rows give the same z)
-    def tile_z(row, priority, map = $game_map)
+    # rows give the same z). KIF's Map Zoom gives the tiles that z times its
+    # scale, rounded (MapZoom.rb's refresh_tile_z), as the characters' z
+    def tile_z(row, priority, map = $game_map, k = 1.0)
       sub = defined?(::Game_Map::Y_SUBPIXELS) ? ::Game_Map::Y_SUBPIXELS : 4
       top = (map.display_y.to_f / sub).round / 32
-      return (row - top) * 32 + priority * 32 + 32
+      z = (row - top) * 32 + priority * 32 + 32
+      return k == 1.0 ? z : (z * k).round
+    end
+
+    # A sprite at a spot and size on a Normal-size map (from the camera's
+    # corner), where KIF's Map Zoom draws it (floored, as it places the tiles)
+    def place(s, x, y, zoom, k)
+      s.x = k == 1.0 ? x : (x * k).floor
+      s.y = k == 1.0 ? y : (y * k).floor
+      s.zoom_x = s.zoom_y = zoom * k
     end
 
     # The light patches (UI/SeasonDark.rb asks each frame): [picture,
     # screen x, y, its scale, how much of it (the lights' fade)], or nil:
-    # the map you're on's
+    # the map you're on's. Normal-size, as Season's lights (the dark puts
+    # them where KIF's Map Zoom draws the map)
     def dark_picture
       l = layer
       return nil unless l && l.lit? && on?
@@ -236,7 +251,7 @@ module GhostlyPossession
           s.opacity = 0
           [x.to_i, y.to_i, s]
         end
-        @strips = []          # [its picture's entry, map row, sprite]
+        @strips = []          # [its picture's entry, map row, sprite, its size]
         @strip_pics = []
         (e["high"] || []).each { |hp| strips(viewport, hp, false) }
         (e["high_glow"] || []).each { |hp| strips(viewport, hp, true) }
@@ -267,7 +282,7 @@ module GhostlyPossession
           s.zoom_x = s.zoom_y = scale
           s.blend_type = 1 if glow
           s.opacity = 0
-          @strips << [hp, row.to_i, s]
+          @strips << [hp, row.to_i, s, scale]
         end
       end
 
@@ -339,41 +354,37 @@ module GhostlyPossession
         step = (255.0 / FADE).ceil
         @opacity = @opacity < target ? [@opacity + step, target].min : [@opacity - step, target].max
         dx, dy = TownLights.screen_offset(m)
-        [[@lit, "ox", "oy"], [@glow, "gx", "gy"]].each do |s, kx, ky|
+        ms = GhostlyPossession.map_scale
+        [[@lit, "ox", "oy", 1.0], [@glow, "gx", "gy", (@entry["gscale"] || 1).to_f]].each do |s, kx, ky, zoom|
           next unless s
           s.opacity = @opacity
           s.visible = @opacity > 0
-          s.x = @entry[kx].to_i - dx
-          s.y = @entry[ky].to_i - dy
+          TownLights.place(s, @entry[kx].to_i - dx, @entry[ky].to_i - dy, zoom, ms)
         end
         @beams.each do |b, s, _lift|
           s.opacity = @opacity
           s.visible = @opacity > 0
           next unless s.visible
           s.src_rect = TownLights.beam_cell(b)
-          s.x = b["x"].to_i - dx
-          s.y = b["y"].to_i - dy
+          TownLights.place(s, b["x"].to_i - dx, b["y"].to_i - dy, (b["scale"] || 1).to_f, ms)
         end
-        @strips.each do |hp, row, s|
+        @strips.each do |hp, row, s, zoom|
           s.opacity = @opacity
           s.visible = @opacity > 0
           next unless s.visible
-          s.x = hp["x"].to_i - dx
-          s.y = row * 32 - dy
+          TownLights.place(s, hp["x"].to_i - dx, row * 32 - dy, zoom, ms)
           # one over its tiles: at the same z the newer sprite is drawn on
           # top, and KIF's frame rate (C-SYS-01) makes the tiles anew when
           # its in-between drawing starts or stops (a character one row
-          # nearer is 32 higher still)
-          s.z = TownLights.tile_z(row, hp["p"].to_i, m) + 1
+          # nearer is 32 higher still, 16 at Far)
+          s.z = TownLights.tile_z(row, hp["p"].to_i, m, ms) + 1
         end
         unless @fires.empty?
           k = TownLights.flicker
           @fires.each do |x, y, s|
             s.opacity = (@opacity * k).round
             s.visible = @opacity > 0
-            s.zoom_x = s.zoom_y = 0.97 + 0.03 * k
-            s.x = x - dx
-            s.y = y - dy
+            TownLights.place(s, x - dx, y - dy, 0.97 + 0.03 * k, ms)
           end
         end
       rescue StandardError => e
